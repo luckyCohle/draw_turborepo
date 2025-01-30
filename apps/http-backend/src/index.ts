@@ -111,4 +111,29 @@ app.post("/room",auth, async (req, res) => {
     }
 })
 
-app.listen(3001);
+app.get("/chats/:room_id",async (req,res)=>{
+    console.log("request recived")
+    const room_id = parseInt(req.params.room_id);
+    try {
+        const chats = await prismaClient.chat.findMany({
+            where:{
+                roomId:room_id
+            },
+            orderBy:{
+                id:"desc"
+            },
+            take:50
+        })
+        res.send({
+            message:"request successfull",
+            chats:chats,
+        })
+    } catch (error) {
+        res.status(400).send({
+            message:"get request failed"
+        })
+    }
+})
+app.listen(3001,()=>{
+    console.log("listning on port 3001")
+});
