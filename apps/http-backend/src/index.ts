@@ -82,19 +82,32 @@ try {
 }
 })
 
-app.post("/room", middleware, (req, res) => {
-    const data = CreateRoomSchema.safeParse(req.body);
-    if (!data.success) {
+app.post("/room", middleware, async (req, res) => {
+    const parsedData = CreateRoomSchema.safeParse(req.body);
+    if (!parsedData.success) {
         res.json({
             message: "Incorrect inputs"
         })
         return;
     }
-    // db call
-
-    res.json({
-        roomId: 123
-    })
+    try {
+        //@ts-ignore
+        const userId = req.userId;
+        const newRoom = await prismaClient.room.create({
+            data:{
+                slug:parsedData.data.name,
+                adminId:userId
+            }
+        })
+        res.json({
+            message:"room Created",
+            roomId: newRoom.id
+        })
+    } catch (error) {
+        res.json({
+            message:"request failed"
+        })
+    }
 })
 
 app.listen(3001);
