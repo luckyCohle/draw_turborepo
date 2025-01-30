@@ -2,7 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { JWT_SECRET } from '@repo/backend-common/config';
-import { middleware } from "./middleware.js";
+import { auth } from "./middleware.js";
 import { CreateUserSchema, SigninSchema, CreateRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
 
@@ -82,7 +82,7 @@ try {
 }
 })
 
-app.post("/room", middleware, async (req, res) => {
+app.post("/room",auth, async (req, res) => {
     const parsedData = CreateRoomSchema.safeParse(req.body);
     if (!parsedData.success) {
         res.json({
@@ -104,8 +104,9 @@ app.post("/room", middleware, async (req, res) => {
             roomId: newRoom.id
         })
     } catch (error) {
-        res.json({
-            message:"request failed"
+        res.status(400).json({
+            message:"request failed",
+            error:error
         })
     }
 })
