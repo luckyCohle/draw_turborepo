@@ -134,6 +134,24 @@ app.get("/chats/:room_id",async (req,res)=>{
         })
     }
 })
+app.get("/room/:slug",async(req,res)=>{
+    const slug = req.params.slug;
+    try {
+        let roomId = await prismaClient.room.findFirst({
+            where:{
+                slug
+            }
+        })
+        res.send({
+            roomId:roomId
+        })
+    } catch (error) {
+        res.status(400).send({
+            message:"reqeust failed",
+            error:error
+        })
+    }
+})
 app.listen(3001,()=>{
     console.log("listning on port 3001")
 });
