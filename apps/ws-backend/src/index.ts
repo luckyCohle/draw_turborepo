@@ -46,24 +46,28 @@ wss.on('connection', async function connection(ws, request) {
         
       }
       //send text 
-      if (parsedData.type === "chat") {
+      if (parsedData.type === "sendShape") {
         const roomId = parsedData.roomId;
-        const message = parsedData.message;
+        const shapeProperties = parsedData.shapeProperties;
+        const shapeType = parsedData.shapeType;
         users.forEach(async user=>{
           if (user.rooms.includes(roomId)) {
             user.ws.send(JSON.stringify({
-              type:"chat",
-              message:message,
+              type:"sendShape",
+              shapeType:shapeType,
+              shapeProperties:shapeProperties,
               roomId:roomId
             }))
           }
           //db update
           const parsedRoomId = parseInt(roomId);
+          const parsedProperties = JSON.parse(shapeProperties);
           try {
             await prisma.shape.create({
               data:{
                 roomId:parsedRoomId,
                 shapeType,
+                properties:parsedProperties,
                 userId
               }
             })
