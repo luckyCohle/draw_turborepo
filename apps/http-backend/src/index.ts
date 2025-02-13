@@ -5,9 +5,11 @@ import { JWT_SECRET } from '@repo/backend-common/config';
 import { auth } from "./middleware.js";
 import { CreateUserSchema, SigninSchema, CreateRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
+import cors from 'cors'
 
 const app = express();
 app.use(express.json())
+app.use(cors())
 
 app.post("/signup", async (req, res) => {
 
@@ -111,11 +113,11 @@ app.post("/room",auth, async (req, res) => {
     }
 })
 
-app.get("/chats/:room_id",async (req,res)=>{
+app.get("/shapes/:room_id",async (req,res)=>{
     console.log("request recived")
     const room_id = parseInt(req.params.room_id);
     try {
-        const chats = await prismaClient.chat.findMany({
+        const shapes = await prismaClient.shape.findMany({
             where:{
                 roomId:room_id
             },
@@ -126,7 +128,7 @@ app.get("/chats/:room_id",async (req,res)=>{
         })
         res.send({
             message:"request successfull",
-            chats:chats,
+            existingShapes:shapes,
         })
     } catch (error) {
         res.status(400).send({

@@ -1,10 +1,10 @@
-import { ReactNode } from "react";
+import { MouseEventHandler, ReactNode } from "react";
 import clsx from "clsx"; // Optional: use clsx for cleaner class merging
-
+import zod from "zod";
 interface ButtonProps {
   children: ReactNode;
   className?: string;
-  handleClick?: () => void;
+  handleClick?: MouseEventHandler<HTMLButtonElement>;
   btn?: btnType; // Sets button to a predefined style
 }
 export enum btnType {
@@ -12,6 +12,7 @@ export enum btnType {
 }
 
 export const Button = ({ children, className, handleClick, btn }: ButtonProps) => {
+ 
   return (
     <button
       className={clsx(btn, className)} // Merging class names
