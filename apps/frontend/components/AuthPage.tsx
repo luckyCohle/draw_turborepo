@@ -3,6 +3,7 @@ import { signinUserType, signupUserType } from "@/interfaces/auth";
 import { Button,btnType } from "@repo/ui/button"
 import { Input } from "@repo/ui/input"
 import { signupUser } from "@/app/signup/page";
+import { signinUser } from "@/app/signin/page";
 interface propType {
     isSignin: boolean;
 }
@@ -17,7 +18,7 @@ function AuthPage({ isSignin }: propType) {
                 email:(document.querySelector("input[name='email']") as HTMLInputElement)?.value,
                 password:(document.querySelector("input[name='password']") as HTMLInputElement)?.value
             }
-            
+            signinUser(formData);
             return
         }
         const formData:signupUserType={

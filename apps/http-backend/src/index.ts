@@ -42,6 +42,8 @@ app.post("/signup", async (req, res) => {
 })
 
 app.post("/signin", async (req, res) => {
+    
+try {
     const parsedData = SigninSchema.safeParse(req.body);
     if (!parsedData.success) {
         res.json({
@@ -49,7 +51,6 @@ app.post("/signin", async (req, res) => {
         })
         return;
     }
-try {
     const user = await prismaClient.user.findUnique({
         where:{
             email:parsedData.data.email

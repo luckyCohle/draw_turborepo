@@ -60,10 +60,10 @@ wss.on('connection', async function connection(ws, request) {
           //db update
           const parsedRoomId = parseInt(roomId);
           try {
-            await prisma.chat.create({
+            await prisma.shape.create({
               data:{
                 roomId:parsedRoomId,
-                message,
+                shapeType,
                 userId
               }
             })
