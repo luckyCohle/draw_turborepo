@@ -1,90 +1,119 @@
-import { WebSocketServer,WebSocket } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from '@repo/backend-common/config';
-import {prismaClient as prisma} from "@repo/db/client";
+import { prismaClient as prisma } from "@repo/db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
+//made a set to prevent duplicate entries in db
+const processedShapes = new Set<string>();
+
 interface User {
-  userId:string,
-  ws:WebSocket,
-  rooms:string[];
+  userId: string,
+  ws: WebSocket,
+  rooms: string[];
 }
+
 const users: User[] = [];
+
 wss.on('connection', async function connection(ws, request) {
   const url = request.url;
   if (!url) {
     return;
   }
+
   const queryParams = new URLSearchParams(url.split('?')[1]);
   const token = queryParams.get('token') || "";
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (typeof decoded == "string"||!decoded || !decoded.userId) {
+    if (typeof decoded == "string" || !decoded || !decoded.userId) {
       ws.close();
       return;
     }
+
     const userId = decoded.userId;
     users.push({
       userId,
-      rooms:[],
+      rooms: [],
       ws
-    })
-    ws.on('message', function message(data) {
+    });
+
+    ws.on('message', async function message(data) {
       try {
         const parsedData = JSON.parse(data as unknown as string);
-      //join room
-      if (parsedData.type == "join_room") {
-        const user = users.find(x=>x.ws===ws);
-        user?.rooms.push(parsedData?.roomId);
-      }
-      //leave room
-        if (parsedData.type == "leave_room") {
-        const user = users.find(x=>x.ws===ws);
-        if (user) {
-          user.rooms = user.rooms.filter(x => x !== parsedData.roomId);
+
+        // Join room
+        if (parsedData.type == "join_room") {
+          const user = users.find(x => x.ws === ws);
+          user?.rooms.push(parsedData?.roomId);
         }
-        
-      }
-      //send text 
-      if (parsedData.type === "sendShape") {
-        const roomId = parsedData.roomId;
-        const shapeProperties = parsedData.shapeProperties;
-        const shapeType = parsedData.shapeType;
-        users.forEach(async user=>{
-          if (user.rooms.includes(roomId)) {
-            user.ws.send(JSON.stringify({
-              type:"sendShape",
-              shapeType:shapeType,
-              shapeProperties:shapeProperties,
-              roomId:roomId
-            }))
+
+        // Leave room
+        if (parsedData.type == "leave_room") {
+          const user = users.find(x => x.ws === ws);
+          if (user) {
+            user.rooms = user.rooms.filter(x => x !== parsedData.roomId);
           }
-          //db update
+        }
+
+        // Send shape
+        if (parsedData.type === "sendShape") {
+          const { roomId, shapeProperties, shapeType } = parsedData;
+          const sender = users.find(user => user.ws === ws);
+
+          if (!sender) return;
+
+          // First, save to database
           const parsedProperties = JSON.parse(shapeProperties);
+          if(processedShapes.has(parsedProperties)){
+            console.log("shape already in db")
+            return;
+          }
           try {
             await prisma.shape.create({
-              data:{
-                roomId:roomId,
+              data: {
+                roomId,
                 shapeType,
-                properties:parsedProperties,
-                userId
+                properties: parsedProperties,
+                userId: sender.userId
               }
-            })
+            });
+            processedShapes.add(parsedProperties);
+
+            if(processedShapes.size>500){
+              processedShapes.clear();
+            }
+
+            // Then broadcast to all users in the room
+            users.forEach(user => {
+              if (user.rooms.includes(roomId)) {
+                user.ws.send(JSON.stringify({
+                  type: "sendShape",
+                  shapeType,
+                  shapeProperties,
+                  roomId
+                }));
+              }
+            });
           } catch (error) {
-            console.log(error);
+            console.error("Error saving shape to database:", error);
+            ws.send(JSON.stringify({ 
+              type: "error", 
+              message: "Failed to save shape" 
+            }));
           }
-        })
-      }
+        }
       } catch (error) {
         console.error("Invalid message received:", error);
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+        ws.send(JSON.stringify({ 
+          type: "error", 
+          message: "Invalid message format" 
+        }));
       }
     });
-  
-  } catch (error) {
-    console.log(error)
-    ws.close()
-  }
 
-  
+  } catch (error) {
+    console.log(error);
+    ws.close();
+  }
 });

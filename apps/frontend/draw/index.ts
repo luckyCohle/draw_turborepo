@@ -19,7 +19,7 @@ export async function initDraw(canvas:HTMLCanvasElement,roomId:string,socket:Web
             if(!ctx){
                 return ;
             }
-
+            ctx.strokeStyle="white";
             socket.onmessage=(event)=>{
                 const messageData = JSON.parse(event.data);
                 if(messageData.type=="sendShape"){
@@ -32,14 +32,34 @@ export async function initDraw(canvas:HTMLCanvasElement,roomId:string,socket:Web
                     clearCanvas(ctx,canvas,existingShapes);
                 }
             }
+            //function to reset dimensions of canvas on change of window size
+            function resizeCanvas() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                if(ctx){
+                    clearCanvas(ctx!,canvas,existingShapes)
+                    redrawShapes(ctx,existingShapes)
+                }
 
+            }
 
             let existingShapes:Shapes[] = await getExistingShapes(roomId)
+            // console.log("existing Shapes=>"+existingShapes)
             let clicked =false;
             let startX=0;
             let startY =0;
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
+            let originalWidth: number;
+            let originalHeight: number;
+            //to observe any change in the windowsize,did it to prevent issues on opening dev tools
+            const resizeObserver = new ResizeObserver(() => {
+                resizeCanvas();
+            });
+            resizeObserver.observe(canvas);
+        
+            // Initial setup
+            // resizeCanvas();
             //mousedown event
             canvas.addEventListener("mousedown",(e)=>{
                 clicked=true;
@@ -87,6 +107,8 @@ export async function initDraw(canvas:HTMLCanvasElement,roomId:string,socket:Web
             })
 }
 function clearCanvas(ctx:CanvasRenderingContext2D,canvas:HTMLCanvasElement,shapesArray:Shapes[]) {
+    // console.log("clearCanvas called")
+    ctx.strokeStyle = "white";
     ctx.clearRect(0,0,canvas.width,canvas.height);
     shapesArray.map((shape)=>{
         if(shape.type==="rectangle"){
@@ -95,13 +117,15 @@ function clearCanvas(ctx:CanvasRenderingContext2D,canvas:HTMLCanvasElement,shape
     })
 }
 async function getExistingShapes(roomId: string): Promise<Shapes[]> {
+    console.log("get existing shapes called")
     try {
         const res = await axios.get(`${httpUrl}/shapes/${roomId}`);
-    if(!res.data.shapes){
+    if(!res.data.existingShapes){
+        console.error("did not recivied existingShapes form response")
         return [];
     }
-    const existingShapes: Shapes[] = res.data.shapes.map((x: any) => {
-        const properties = JSON.parse(x.properties);
+    const existingShapes: Shapes[] = res.data.existingShapes.map((x: any) => {
+        const properties = (x.properties);
         
         if (x.shapeType === "rectangle") {
             return {
@@ -122,10 +146,22 @@ async function getExistingShapes(roomId: string): Promise<Shapes[]> {
 
         throw new Error(`Unknown shapeType: ${x.shapeType}`);
     });
-
+    // console.log("existingShapes=>"+existingShapes)
     return existingShapes;
     } catch (error) {
         console.log(error);
         return [];
     }
+}
+function redrawShapes(ctx: CanvasRenderingContext2D, shapesArray: Shapes[]) {
+    // console.log("redrawShapes called")
+    shapesArray.forEach((shape) => {
+        if (shape.type === "rectangle") {
+            ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+        } else if (shape.type === "circle") {
+            ctx.beginPath();
+            ctx.arc(shape.centerX, shape.centerY, shape.radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    });
 }
