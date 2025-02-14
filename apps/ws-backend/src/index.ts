@@ -60,12 +60,11 @@ wss.on('connection', async function connection(ws, request) {
             }))
           }
           //db update
-          const parsedRoomId = parseInt(roomId);
           const parsedProperties = JSON.parse(shapeProperties);
           try {
             await prisma.shape.create({
               data:{
-                roomId:parsedRoomId,
+                roomId:roomId,
                 shapeType,
                 properties:parsedProperties,
                 userId

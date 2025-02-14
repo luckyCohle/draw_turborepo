@@ -116,7 +116,7 @@ app.post("/room",auth, async (req, res) => {
 
 app.get("/shapes/:room_id",async (req,res)=>{
     console.log("request recived")
-    const room_id = parseInt(req.params.room_id);
+    const room_id = req.params.room_id;
     try {
         const shapes = await prismaClient.shape.findMany({
             where:{
