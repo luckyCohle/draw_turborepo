@@ -6,6 +6,7 @@ import { auth } from "./middleware.js";
 import { CreateUserSchema, SigninSchema, CreateRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
 import cors from 'cors'
+import { isValid } from "zod";
 
 const app = express();
 app.use(express.json())
@@ -115,7 +116,7 @@ app.post("/room",auth, async (req, res) => {
 })
 
 app.get("/shapes/:room_id",async (req,res)=>{
-    console.log("request recived")
+    // console.log("request recived")
     const room_id = req.params.room_id;
     try {
         const shapes = await prismaClient.shape.findMany({
@@ -151,6 +152,34 @@ app.get("/room/:slug",async(req,res)=>{
     } catch (error) {
         res.status(400).send({
             message:"reqeust failed",
+            error:error
+        })
+    }
+})
+app.get("/roomCheck/:roomId",async (req,res) => {
+    console.log("roomCheck request recieved")
+    const roomId = req.params.roomId;
+    try {
+        const room = await prismaClient.room.findUnique({
+            where:{
+                id:roomId
+            }
+        })
+        if (!room) {
+            console.log("room not valid")
+            res.send({
+                isValidRoom:false
+            });
+            return;
+        }
+        console.log('room is valid');
+        res.send({
+            isValidRoom:true,
+            roomDetails:room
+        })
+    } catch (error) {
+        res.status(400).send({
+            message:"request failed",
             error:error
         })
     }

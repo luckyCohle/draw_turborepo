@@ -2,14 +2,14 @@ import React, { useEffect } from 'react';
 import { Shapes, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-const RedirectPage = ({ message , destination }:{message:string,destination:string}) => {
+const RedirectPage = ({ message , destination ,timeoutTime }:{message:string,destination:string,timeoutTime:number}) => {
     const router = useRouter()
   useEffect(() => {
     // Simulate redirect after 2 seconds
     const timer = setTimeout(() => {
     //   window.location.href = destination;
     router.push(destination);
-    }, 3000);
+    }, timeoutTime);
 
     return () => clearTimeout(timer);
   }, [destination]);
