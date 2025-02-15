@@ -10,34 +10,14 @@ import {
 } from 'lucide-react';
 import { Button,btnType } from '@repo/ui/button';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 function App() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed w-full bg-white/80 backdrop-blur-sm z-50 border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center space-x-2">
-              <Shapes className="w-8 h-8 text-indigo-600" />
-              <span className="text-xl font-bold text-gray-900">Excelidraw</span>
-            </div>
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-gray-900">Features</a>
-              <a href="#" className="text-gray-600 hover:text-gray-900">Docs</a>
-              <a href="#" className="text-gray-600 hover:text-gray-900">Blog</a>
-              {/* <Button children={"Open Canvas"} btn={btnType.primary} /> */}
-              <Link href="/signin">
-              <Button children={"Login"}/>
-              </Link>
-              <Link href="/signup">
-              <Button children={"Sign up"} btn={btnType.primary}/>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+      <Navbar/>
+      
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -134,19 +114,8 @@ function App() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-50 border-t">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Shapes className="w-6 h-6 text-indigo-600" />
-              <span className="text-lg font-semibold text-gray-900">Excelidraw</span>
-            </div>
-            <p className="text-gray-500">© 2024 Excelidraw. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer/>
+      
     </div>
   );
 }

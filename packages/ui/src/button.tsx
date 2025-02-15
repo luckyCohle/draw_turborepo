@@ -8,7 +8,7 @@ interface ButtonProps {
   btn?: btnType; // Sets button to a predefined style
 }
 export enum btnType {
-  primary = "bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+  primary = "bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
 }
 
 export const Button = ({ children, className, handleClick, btn }: ButtonProps) => {
