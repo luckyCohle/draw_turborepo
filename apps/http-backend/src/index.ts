@@ -19,7 +19,8 @@ app.post("/signup", async (req, res) => {
         console.log(parsedData.error)
         res.status(400).json({
             message: "Incorrect inputs",
-            eror:parsedData.error
+            error:parsedData.error,
+            isSuccess:false
         })
         return;
     }
@@ -33,11 +34,13 @@ app.post("/signup", async (req, res) => {
             }
         })
         res.json({
-            userId: newUser.id
+            userId: newUser.id,
+            isSucceess:true
         })
     } catch(e) {
         res.status(411).json({
-            message: "User already exists with this username"
+            message: "User already exists with this username",
+            isSuccess:false
         })
     }
 })
@@ -48,7 +51,8 @@ try {
     const parsedData = SigninSchema.safeParse(req.body);
     if (!parsedData.success) {
         res.json({
-            message: "Incorrect inputs"
+            message: "Incorrect inputs",
+            isSuccess:false
         })
         return;
     }
@@ -59,7 +63,8 @@ try {
     })
     if (!user) {
         res.status(403).send({
-            message:"used does not exist"
+            message:"used does not exist",
+            isSuccess:false
         })
         return;
     }
@@ -67,7 +72,8 @@ try {
     const passwordMatch = await bcrypt.compare(parsedData.data.password,userPassword);
     if (!passwordMatch) {
         res.status(403).send({
-            message:"incorrect password"
+            message:"incorrect password",
+            isSuccess:false
         })
         return;
     }
@@ -76,7 +82,8 @@ try {
     },JWT_SECRET);
     res.status(200).send({
         message:"singup Successfull",
-        token:jwtToken
+        token:jwtToken,
+        isSuccess:true
     })
 } catch (error) {
     res.json({

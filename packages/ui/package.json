@@ -7,7 +7,8 @@
     "./button": "./src/button.tsx",
     "./card": "./src/card.tsx",
     "./code": "./src/code.tsx",
-    "./input": "./src/input.tsx"
+    "./input": "./src/input.tsx",
+    "./alert":"./src/alert.tsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -25,6 +26,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

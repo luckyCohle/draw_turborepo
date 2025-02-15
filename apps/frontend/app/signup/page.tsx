@@ -3,19 +3,16 @@ import axios from 'axios'
 import { httpUrl } from '@/url'
 import { signupUserType } from '@/interfaces/auth'
 
-export const  signupUser=({username,email,password}:signupUserType)=> {
-  axios.post(`${httpUrl}/signup`, {
-   username,
-   email,
-   password
-  })
-  .then(function (response) {
+export const signupUser = async ({ username, email, password }: signupUserType): Promise<boolean> => {
+  try {
+    const response = await axios.post(`${httpUrl}/signup`, { username, email, password });
     console.log(response);
-  })
-  .catch(function (error) {
-    console.log(error);
-  });
-}
+    return response.data.isSuccess; // Ensure response structure matches this
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
 
 export default function Signup() {
   return (

@@ -9,18 +9,18 @@ export default function Signin() {
     <div><AuthPage isSignin={true}/></div>
   )
 }
-export const  signinUser=({email,password}:signinUserType)=> {
-  axios.post(`${httpUrl}/signin`, {
-   email,
-   password
-  })
-  .then(function (response) {
-    console.log(response.data.token);
-    if(response.data.token){
-      localStorage.setItem("token",response.data.token);
+export const signinUser = async ({ email, password }: signinUserType): Promise<boolean> => {
+  try {
+    const response = await axios.post(`${httpUrl}/signin`, { email, password });
+
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+      console.log("Token saved:", response.data.token);
     }
-  })
-  .catch(function (error) {
-    console.log(error);
-  });
-}
+
+    return response.data.isSuccess || false; // Ensure it returns a boolean
+  } catch (error) {
+    console.error("Signin error:", error);
+    return false;
+  }
+};
