@@ -102,8 +102,8 @@ const RoomPage = () => {
           <div className="h-48 overflow-y-auto">
             <ul className="space-y-2">
               {rooms?.map((room) => (
-                <li key={room.id} onClick={()=>setRoomToJoin(room.id)} className={`bg-gray-50 px-3 py-2 flex justify-around rounded-md text-gray-800 text-sm font-medium shadow-sm transition ${roomToJoin === room.id ? "bg-violet-500 hover:bg-violet-700 text-white font-bold" : " hover:bg-gray-100"}`}>
-                  <p className="font-semibold">{room.roomName}</p><p>admin name:{room.adminName}</p>
+                <li key={room.id} onClick={()=>setRoomToJoin(room.id)} className={`bg-gray-50  py-2 flex justify-between px-4 rounded-md text-gray-800 text-sm font-medium shadow-sm transition ${roomToJoin === room.id ? "bg-violet-500 hover:bg-violet-700 text-white font-bold" : " hover:bg-gray-100"}`}>
+                  <p className="font-semibold">{room.roomName}</p><p>admin name:&nbsp;{room.adminName}</p>
                 </li>
               )) || <p>No rooms available</p>}
             </ul>
