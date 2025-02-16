@@ -30,6 +30,7 @@ export function auth(req: Request, res: Response, next: NextFunction) {
         })
     }
     } catch (error) {
+        console.error(error);
         
     }
 }

@@ -5,7 +5,8 @@ import { Input } from "@/components/input";
 import axios from "axios";
 import { httpUrl } from "@/url";
 import { Loading } from "@/components/Loading";
-
+import { useRouter } from "next/navigation";
+import { ToastContainer, toast } from "react-toastify";
 interface Room {
   id: string;
   roomName: string;
@@ -17,6 +18,10 @@ const RoomPage = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [newRoomName, setNewRoomName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [roomToJoin,setRoomToJoin] = useState("");
+  const [isCreatingRoom,setIsCreatingRoom] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     const setRoomsArray = async () => {
@@ -28,15 +33,52 @@ const RoomPage = () => {
     setRoomsArray();
   }, []);
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async() => {
     if (!newRoomName.trim()) {
-      alert("Room name cannot be empty!");
+      toast.error("Room name cannot be empty!");
       return;
     }
-
-    setRooms((prev) => [...prev, { id: Date.now().toString(), roomName: newRoomName }]);
-    setNewRoomName("");
+    setIsCreatingRoom(true);
+    try {
+      const accessToken = localStorage.getItem("token");
+      if(!accessToken){
+        toast.error("You need to login to create Room")
+        setIsCreatingRoom(false)
+        router.push("/signin")
+        return;
+      }
+      const response = await axios.post(`${httpUrl}/room`,{name:newRoomName}, {headers: {'Authorization': `Bearer ${accessToken}`
+      }
+    })
+    console.log("control at 1");
+      const roomId = response.data.roomId;
+      setRoomToJoin(response.data.roomId);
+      console.log("room to join changed to =>"+roomToJoin);
+      handleRoomJoin();
+    } catch (error) {
+      console.log(error)
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          toast.error("Authentication failed. Please log in again.");
+          setIsCreatingRoom(false);
+          setTimeout(()=>{
+            router.push("/login");
+          },3000);
+        } else {
+          alert(error.response?.data?.message || "An error occurred.");
+        }
+      } else {
+        console.error("Unexpected error:", error);
+      }
+    }
   };
+  const handleRoomJoin=()=>{
+    if (!roomToJoin) {
+      return;
+    }
+    const roomId:string = roomToJoin;
+    router.push(`/canvas/${roomId}`)
+  }
 
   if (isLoading) {
     return (
@@ -48,6 +90,7 @@ const RoomPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 flex justify-evenly items-center">
+      <ToastContainer position="top-right"/>
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white text-center">
           <h2 className="text-xl font-bold">Rooms</h2>
@@ -59,7 +102,7 @@ const RoomPage = () => {
           <div className="h-48 overflow-y-auto">
             <ul className="space-y-2">
               {rooms?.map((room) => (
-                <li key={room.id} className="bg-gray-50 px-3 py-2 flex justify-around rounded-md text-gray-800 text-sm font-medium shadow-sm hover:bg-gray-100 transition">
+                <li key={room.id} onClick={()=>setRoomToJoin(room.id)} className={`bg-gray-50 px-3 py-2 flex justify-around rounded-md text-gray-800 text-sm font-medium shadow-sm transition ${roomToJoin === room.id ? "bg-violet-500 hover:bg-violet-700 text-white font-bold" : " hover:bg-gray-100"}`}>
                   <p className="font-semibold">{room.roomName}</p><p>admin name:{room.adminName}</p>
                 </li>
               )) || <p>No rooms available</p>}
@@ -71,7 +114,7 @@ const RoomPage = () => {
           </div>
           <Button
                 btn={btnType.primary}
-                handleClick={handleCreateRoom}
+                handleClick={handleRoomJoin}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 Join Room
@@ -105,7 +148,7 @@ const RoomPage = () => {
                 handleClick={handleCreateRoom}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                Create Room
+                {isCreatingRoom?"Creating Room...":"Create Room"}
               </Button>
             </div>
           </div>

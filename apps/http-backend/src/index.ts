@@ -201,15 +201,13 @@ app.get("/getRooms", async (req, res) => {
     try {
         const rooms = await prismaClient.room.findMany({
             include: {
-              admin: true,  // Fetches the admin user details
+              admin: true,  
             },
           });
 
-        console.log("Fetched Rooms:", rooms); // Debugging log
-
         const roomsResponse = rooms.map(room => ({
             id: room.id,
-            adminName: room.admin?.name ?? "Unknown", // Handle missing admin
+            adminName: room.admin?.name ?? "Unknown", 
             adminId: room.admin?.id ?? "Unknown",
             roomName: room.slug
         }));
