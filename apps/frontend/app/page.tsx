@@ -30,9 +30,11 @@ function App() {
               Create beautiful hand-drawn diagrams, wireframes, and illustrations with our intuitive drawing tool. Collaborate in real-time with your team.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Link href={"/room"}>
               <button className="bg-indigo-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
-                Start Drawing <ArrowRight className="w-5 h-5" />
+                Join a Room <ArrowRight className="w-5 h-5" />
               </button>
+              </Link>
               <button className="border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold hover:border-gray-300 transition-colors">
                 Watch Demo
               </button>

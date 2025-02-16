@@ -2,11 +2,11 @@
 import { signinUserType, signupUserType } from "@/interfaces/auth";
 import { Button, btnType } from "@repo/ui/button";
 import { Input } from "@/components/input";
-import { signupUser } from "@/app/signup/page";
-import { signinUser } from "@/app/signin/page";
+import { signupUser,signinUser } from "@/utility/auth";
 import { useEffect, useState } from "react";
 import RedirectPage from "./Redirecting";
 import { ToastContainer, toast } from "react-toastify";
+import { Loading } from "./Loading";
 
 interface propType {
   isSignin: boolean;
@@ -15,6 +15,12 @@ interface propType {
 function AuthPage({ isSignin }: propType) {
   const [authSuccess, setAuthSuccess] = useState<boolean | null>(null);
   const [isAuthDone, setIsAuthDone] = useState(false);
+  const [isLoading,setIsLoading] = useState(true);
+  useEffect(()=>{
+    setTimeout(()=>{
+      setIsLoading(false)
+    },2000)
+  },[])
 
   
 
@@ -47,6 +53,10 @@ function AuthPage({ isSignin }: propType) {
       toast.error("An unexpected error occurred. Please try again.");
     }
   };
+  //different page states
+  if (isLoading) {
+    return <Loading messagePrimary="Fetching your Page" messageSecondary="Loading the data"/>
+  }
 
   if (authSuccess && isAuthDone) {
     return (

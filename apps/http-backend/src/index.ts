@@ -11,7 +11,12 @@ import { isValid } from "zod";
 const app = express();
 app.use(express.json())
 app.use(cors())
-
+interface Room {
+    id: string;
+    roomName: string;
+    adminId?:string;
+    adminName:string;
+  }
 app.post("/signup", async (req, res) => {
 
     const parsedData = CreateUserSchema.safeParse(req.body);
@@ -191,6 +196,36 @@ app.get("/roomCheck/:roomId",async (req,res) => {
         })
     }
 })
+app.get("/getRooms", async (req, res) => {
+    console.log("getRooms route got called")
+    try {
+        const rooms = await prismaClient.room.findMany({
+            include: {
+              admin: true,  // Fetches the admin user details
+            },
+          });
+
+        console.log("Fetched Rooms:", rooms); // Debugging log
+
+        const roomsResponse = rooms.map(room => ({
+            id: room.id,
+            adminName: room.admin?.name ?? "Unknown", // Handle missing admin
+            adminId: room.admin?.id ?? "Unknown",
+            roomName: room.slug
+        }));
+
+        res.json({
+            message: "Rooms fetched successfully",
+            rooms: roomsResponse
+        });
+
+    } catch (error) {
+        console.error("Error fetching rooms:", error);
+        res.status(500).json({ message: "Failed to fetch rooms", error });
+    }
+});
+
+
 app.listen(3001,()=>{
     console.log("listning on port 3001")
 });

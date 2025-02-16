@@ -61,7 +61,7 @@ const styles = `
   }
 `;
 
-export function Loading() {
+export function Loading({messagePrimary="Preparing Your Canvas",messageSecondary="Loading creative tools and brushes..."}:{messagePrimary?:string,messageSecondary?:string}) {
   return (
     <>
       <style>{styles}</style>
@@ -94,10 +94,10 @@ export function Loading() {
 
           {/* Loading Text */}
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
-            Preparing Your Canvas
+            {messagePrimary}
           </h2>
           <p className="text-gray-600 mb-6">
-            Loading creative tools and brushes...
+            {messageSecondary}
           </p>
 
           {/* Progress Bar */}
