@@ -20,7 +20,7 @@ export const signinUser = async ({ email, password }: signinUserType): Promise<b
   export const signupUser = async ({ username, email, password }: signupUserType): Promise<boolean> => {
     try {
       const response = await axios.post(`${httpUrl}/signup`, { username, email, password });
-      console.log(response);
+      console.log(response.data.isSuccess);
       return response.data.isSuccess; // Ensure response structure matches this
     } catch (error) {
       console.error(error);

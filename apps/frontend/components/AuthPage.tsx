@@ -16,21 +16,31 @@ function AuthPage({ isSignin }: propType) {
   const [authSuccess, setAuthSuccess] = useState<boolean | null>(null);
   const [isAuthDone, setIsAuthDone] = useState(false);
   const [isLoading,setIsLoading] = useState(true);
+  const [isAuthenticating,setIsAuthenticating]=useState(false);
+  const [buttonText,setButtonText] = useState("");
   useEffect(()=>{
     setTimeout(()=>{
       setIsLoading(false)
     },2000)
   },[])
+  useEffect(()=>{
+    if(isAuthenticating){
+      setButtonText(isSignin?"Logging in...":"Signing Up");
+    }else{
+      setButtonText(isSignin?"Log in":"Sign Up");
+    }
+  },[isAuthenticating])
+
+  setButtonText(isSignin?"Log in":"Sign UP");
 
   
 
   const onClickHandler = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
+    setIsAuthenticating(true);
     let isSuccess: boolean;
     setIsAuthDone(false);
-
-    try {
-      if (isSignin) {
+    if (isSignin) {
         const formData: signinUserType = {
           email: (document.querySelector("input[name='email']") as HTMLInputElement)?.value,
           password: (document.querySelector("input[name='password']") as HTMLInputElement)?.value
@@ -43,15 +53,15 @@ function AuthPage({ isSignin }: propType) {
           password: (document.querySelector("input[name='password']") as HTMLInputElement)?.value
         };
         isSuccess = await signupUser(formData);
+        console.log(isSuccess)
       }
-      setAuthSuccess(isSuccess);
+      console.log(isSuccess)
+       setAuthSuccess(isSuccess);
       setIsAuthDone(true);
       if (!isSuccess) {
+        setIsAuthenticating(false);
         toast.error(`${isSignin ? "Sign in" : "Sign up"} failed. Please try again.`);
       }
-    } catch (error) {
-      toast.error("An unexpected error occurred. Please try again.");
-    }
   };
   //different page states
   if (isLoading) {

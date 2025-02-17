@@ -20,6 +20,7 @@ interface Room {
 app.post("/signup", async (req, res) => {
 
     const parsedData = CreateUserSchema.safeParse(req.body);
+    console.log(parsedData);
     if (!parsedData.success) {
         console.log(parsedData.error)
         res.status(400).json({
@@ -40,7 +41,7 @@ app.post("/signup", async (req, res) => {
         })
         res.json({
             userId: newUser.id,
-            isSucceess:true
+            isSuccess:true
         })
     } catch(e) {
         res.status(411).json({
