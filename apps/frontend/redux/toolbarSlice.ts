@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type Tool = "select" | "rectangle" | "ellipse" | "line" | "pencil" | "text" | "eraser"|"circle";
+export type Tool = "none"|"select" | "rectangle" | "ellipse" | "line" | "pencil" | "text" | "eraser"|"circle";
 
 interface ToolbarState {
   selectedTool: Tool;
@@ -9,7 +9,7 @@ interface ToolbarState {
 }
 
 const initialState: ToolbarState = {
-  selectedTool: "select",
+  selectedTool: "none",
   strokeColor: "#000000",
   strokeWidth: 2,
 };

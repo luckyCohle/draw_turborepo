@@ -58,7 +58,7 @@ wss.on('connection', async function connection(ws, request) {
 
         // Send shape
         if (parsedData.type === "sendShape") {
-          const { roomId, shapeProperties, shapeType } = parsedData;
+          const { roomId, shapeProperties, shapeType,id } = parsedData;
           const sender = users.find(user => user.ws === ws);
 
           if (!sender) return;
@@ -70,8 +70,18 @@ wss.on('connection', async function connection(ws, request) {
             return;
           }
           try {
+            const shape = await prisma.shape.findUnique({
+              where:{
+                id
+              }
+            })
+            if (shape) {
+              console.log("shape already exists");
+              return;
+            }
             await prisma.shape.create({
               data: {
+                id,
                 roomId,
                 shapeType,
                 properties: parsedProperties,
@@ -103,6 +113,41 @@ wss.on('connection', async function connection(ws, request) {
             }));
           }
         }
+        if (parsedData.type == "deleteShapes") {
+          console.log("delete shape message recieved")
+          const { roomId, shapesToRemove } = parsedData;
+          const sender = users.find(user => user.ws === ws);
+      
+          try {
+              // Delete from db and await the result
+             const deleted = await prisma.shape.deleteMany({
+                  where: {
+                      id: {
+                          in: shapesToRemove
+                      }
+                  }
+              });
+              console.log("result of delete function => "+deleted)
+      
+              // Broadcast to room with shape IDs
+              users.forEach(user => {
+                  if (user.rooms.includes(roomId)) {
+                      user.ws.send(JSON.stringify({
+                          type: "deleteShapes",
+                          shapesToRemove,
+                          roomId
+                      }));
+                  }
+              });
+          } catch (error) {
+              console.error("Error deleting shapes from database:", error);
+              ws.send(JSON.stringify({
+                  type: "error",
+                  message: "Failed to delete shapes"
+              }));
+          }
+      }
+      
       } catch (error) {
         console.error("Invalid message received:", error);
         ws.send(JSON.stringify({ 

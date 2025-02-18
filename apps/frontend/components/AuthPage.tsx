@@ -31,7 +31,7 @@ function AuthPage({ isSignin }: propType) {
     }
   },[isAuthenticating])
 
-  setButtonText(isSignin?"Log in":"Sign UP");
+  // setButtonText(isSignin?"Log in":"Sign UP");
 
   
 

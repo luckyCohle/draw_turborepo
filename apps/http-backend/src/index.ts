@@ -39,8 +39,12 @@ app.post("/signup", async (req, res) => {
                 name: parsedData.data.username
             }
         })
-        res.json({
-            userId: newUser.id,
+        const jwtToken = jwt.sign({
+            userId:newUser?.id
+        },JWT_SECRET);
+        res.status(200).send({
+            message:"singup Successfull",
+            token:jwtToken,
             isSuccess:true
         })
     } catch(e) {
@@ -98,7 +102,7 @@ try {
     })
 }
 })
-
+//create room
 app.post("/room",auth, async (req, res) => {
     const parsedData = CreateRoomSchema.safeParse(req.body);
     if (!parsedData.success) {
@@ -110,9 +114,35 @@ app.post("/room",auth, async (req, res) => {
     try {
         //@ts-ignore
         const userId = req.userId;
+        if (!userId) {
+            console.log(userId+"  user id not present (from createRoom route)")
+        }
+        const checkUser = await prismaClient.user.findUnique({
+            where:{
+                id:userId
+            }
+        })
+        if (!checkUser) {
+            res.status(403).send({
+                message:"invalid user  , signin  and try again"
+            })
+            return
+        }
+        const roomSlug = parsedData.data.name
+        const checkSlug = await prismaClient.room.findUnique({
+            where:{
+                slug:roomSlug
+            }
+        })
+        if (checkSlug) {
+            res.status(401).send({
+                message:"room with this name already exists "
+            })
+            return;
+        }
         const newRoom = await prismaClient.room.create({
             data:{
-                slug:parsedData.data.name,
+                slug:roomSlug,
                 adminId:userId
             }
         })
@@ -121,13 +151,15 @@ app.post("/room",auth, async (req, res) => {
             roomId: newRoom.id
         })
     } catch (error) {
+        console.log(error)
+        
         res.status(400).json({
             message:"request failed",
             error:error
         })
     }
 })
-
+//get shapes from db
 app.get("/shapes/:room_id",async (req,res)=>{
     // console.log("request recived")
     const room_id = req.params.room_id;
@@ -151,6 +183,7 @@ app.get("/shapes/:room_id",async (req,res)=>{
         })
     }
 })
+//get RoomId from roomName
 app.get("/room/:slug",async(req,res)=>{
     const slug = req.params.slug;
     try {
@@ -169,6 +202,7 @@ app.get("/room/:slug",async(req,res)=>{
         })
     }
 })
+//check if roomId is valid
 app.get("/roomCheck/:roomId",async (req,res) => {
     console.log("roomCheck request recieved")
     const roomId = req.params.roomId;
@@ -197,6 +231,7 @@ app.get("/roomCheck/:roomId",async (req,res) => {
         })
     }
 })
+//get all existing rooms
 app.get("/getRooms", async (req, res) => {
     console.log("getRooms route got called")
     try {

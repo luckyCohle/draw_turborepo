@@ -11,7 +11,7 @@ export const signinUser = async ({ email, password }: signinUserType): Promise<b
         console.log("Token saved:", response.data.token);
       }
   
-      return response.data.isSuccess || false; // Ensure it returns a boolean
+      return response.data.isSuccess || false; 
     } catch (error) {
       console.error("Signin error:", error);
       return false;
@@ -20,8 +20,12 @@ export const signinUser = async ({ email, password }: signinUserType): Promise<b
   export const signupUser = async ({ username, email, password }: signupUserType): Promise<boolean> => {
     try {
       const response = await axios.post(`${httpUrl}/signup`, { username, email, password });
-      console.log(response.data.isSuccess);
-      return response.data.isSuccess; // Ensure response structure matches this
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        console.log("Token saved:", response.data.token);
+      }
+  
+      return response.data.isSuccess || false; 
     } catch (error) {
       console.error(error);
       return false;

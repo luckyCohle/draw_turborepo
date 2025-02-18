@@ -18,10 +18,12 @@ export default function Navbar() {
               <a href="#" className="text-gray-600 hover:text-gray-900">Blog</a>
               {/* <Button children={"Open Canvas"} btn={btnType.primary} /> */}
               <Link href="/signin">
-              <Button children={"Login"} />
+              <Button>
+                Login
+              </Button>
               </Link>
               <Link href="/signup">
-              <Button children={"Sign up"} btn={btnType.primary}/>
+              <Button  btn={btnType.primary}>Sign up</Button>
               </Link>
             </div>
           </div>

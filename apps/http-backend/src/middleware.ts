@@ -23,6 +23,7 @@ export function auth(req: Request, res: Response, next: NextFunction) {
     if (decoded) {
         // @ts-ignore: TODO: Fix this
         req.userId = decoded.userId;
+        console.log("middleware log ,userId = "+decoded.userId)
         next();
     } else {
         res.status(403).json({

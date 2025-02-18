@@ -7,6 +7,7 @@ import { httpUrl } from "@/url";
 import { Loading } from "@/components/Loading";
 import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
+import Navbar from "@/components/Navbar";
 interface Room {
   id: string;
   roomName: string;
@@ -39,38 +40,47 @@ const RoomPage = () => {
       return;
     }
     setIsCreatingRoom(true);
-    try {
-      const accessToken = localStorage.getItem("token");
-      if(!accessToken){
-        toast.error("You need to login to create Room")
-        setIsCreatingRoom(false)
-        router.push("/signin")
-        return;
-      }
-      const response = await axios.post(`${httpUrl}/room`,{name:newRoomName}, {headers: {'Authorization': `Bearer ${accessToken}`
-      }
-    })
-    console.log("control at 1");
-      const roomId = response.data.roomId;
-      setRoomToJoin(response.data.roomId);
-      console.log("room to join changed to =>"+roomToJoin);
-      handleRoomJoin();
-    } catch (error) {
-      console.log(error)
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          toast.error("Authentication failed. Please log in again.");
-          setIsCreatingRoom(false);
-          setTimeout(()=>{
-            router.push("/login");
-          },3000);
-        } else {
-          alert(error.response?.data?.message || "An error occurred.");
-        }
-      } else {
-        console.error("Unexpected error:", error);
-      }
+    const accessToken = localStorage.getItem("token");
+
+    if (!accessToken) {
+      toast.error("You need to login to create Room");
+      setIsCreatingRoom(false);
+      router.push("/signin");
+      return;
     }
+    
+    axios
+      .post(
+        `${httpUrl}/room`,
+        { name: newRoomName },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      )
+      .then((response) => {
+        console.log("control at 1");
+        const roomId = response.data.roomId;
+        setRoomToJoin(roomId);
+        console.log("room to join changed to =>" + roomToJoin);
+        handleRoomJoin();
+      })
+      .catch((error) => {
+        setIsCreatingRoom(false);
+        console.log(error);
+    
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            toast.error("Authentication failed. Please log in again.");
+            setIsCreatingRoom(false);
+            setTimeout(() => {
+              router.push("/login");
+            }, 3000);
+          } else {
+            toast.error(error.response?.data?.message || "An error occurred.");
+          }
+        } else {
+          console.error("Unexpected error:", error);
+        }
+      });
+    
   };
   const handleRoomJoin=()=>{
     if (!roomToJoin) {
@@ -89,7 +99,10 @@ const RoomPage = () => {
   }
 
   return (
+    <>
+    <Navbar/>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 flex justify-evenly items-center">
+      
       <ToastContainer position="top-right"/>
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white text-center">
@@ -101,11 +114,11 @@ const RoomPage = () => {
           <h3 className="text-lg font-semibold  text-gray-700 mb-2">Available Rooms</h3>
           <div className="h-48 overflow-y-auto">
             <ul className="space-y-2">
-              {rooms?.map((room) => (
+              {rooms.length!=0?rooms?.map((room) => (
                 <li key={room.id} onClick={()=>setRoomToJoin(room.id)} className={`bg-gray-50  py-2 flex justify-between px-4 rounded-md text-gray-800 text-sm font-medium shadow-sm transition ${roomToJoin === room.id ? "bg-violet-500 hover:bg-violet-700 text-white font-bold" : " hover:bg-gray-100"}`}>
                   <p className="font-semibold">{room.roomName}</p><p>admin name:&nbsp;{room.adminName}</p>
                 </li>
-              )) || <p>No rooms available</p>}
+              )) :<h3>No rooms Available , You can create your own room</h3>}
             </ul>
           </div>
 
@@ -155,6 +168,7 @@ const RoomPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 async function getRooms(): Promise<Room[]> {
