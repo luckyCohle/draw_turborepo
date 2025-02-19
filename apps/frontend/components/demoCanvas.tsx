@@ -22,6 +22,8 @@ useEffect(() => {
                 canvas.style.cursor = "url('/eraser.png') 16 16, auto";
             } else if (selectedTool === "rectangle") {
                 canvas.style.cursor = "crosshair";
+            }else if (selectedTool === "drag") {
+                canvas.style.cursor = "grab"
             } else {
                 canvas.style.cursor = "auto";
             }

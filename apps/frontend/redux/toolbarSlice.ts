@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type Tool = "none"|"select" | "rectangle" | "ellipse" | "line" | "pencil" | "text" | "eraser"|"circle";
+export type Tool = "none"|"select" | "drag"|"rectangle" | "ellipse" | "line" | "pencil" | "text" | "eraser"|"circle";
 
 interface ToolbarState {
   selectedTool: Tool;

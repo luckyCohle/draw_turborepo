@@ -96,7 +96,7 @@ wss.on('connection', async function connection(ws, request) {
 
             // Then broadcast to all users in the room
             users.forEach(user => {
-              if (user.rooms.includes(roomId)) {
+              if (user.rooms.includes(roomId)&&user.ws!=ws) {
                 user.ws.send(JSON.stringify({
                   type: "sendShape",
                   shapeType,
@@ -131,7 +131,7 @@ wss.on('connection', async function connection(ws, request) {
       
               // Broadcast to room with shape IDs
               users.forEach(user => {
-                  if (user.rooms.includes(roomId)) {
+                  if (user.rooms.includes(roomId)&& ws!=user.ws) {
                       user.ws.send(JSON.stringify({
                           type: "deleteShapes",
                           shapesToRemove,
@@ -147,7 +147,31 @@ wss.on('connection', async function connection(ws, request) {
               }));
           }
       }
+      if (parsedData.type === "moveShape") {
+        const { id, shapeType,roomId,shapeProperties } = parsedData;
       
+      
+        // Ensure Prisma update follows strict typing
+        const update = await prisma.shape.update({
+          where: { id },
+          data:{
+            properties:shapeProperties
+          }
+        });
+      
+        console.log("Shape updated:", update);
+         //broadcast
+      users.forEach(user => {
+        if (user.rooms.includes(roomId)&& user.ws!=ws) {
+            user.ws.send(JSON.stringify({
+                type: "moveShape",
+                shapeType,
+                roomId,
+                shapeProperties
+            }));
+        }
+    });
+      }
       } catch (error) {
         console.error("Invalid message received:", error);
         ws.send(JSON.stringify({ 

@@ -1,6 +1,5 @@
 import { store } from "@/redux/store";
 import { Tool } from "@/redux/toolbarSlice";
-import { clear } from "console";
 
 
 
@@ -18,6 +17,8 @@ type Shapes = {
     centerYPercent: number;
     radiusPercent: number;
 }
+
+
 
 export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: React.MutableRefObject<string>) {
     const ctx = canvas.getContext("2d");
@@ -62,8 +63,9 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
         }
     }
 
-    let existingShapes: Shapes[] =[]
+    let existingShapes: Shapes[] =[];
     let shapesToRemove:number[]=[];
+    let shapeToDrag:Shapes|null=null;
 
     //initial values
     let clicked = false;
@@ -89,15 +91,23 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
         startX = e.offsetX;
         startY = e.offsetY;
         shapesToRemove=[];
+        if(getSelectedTool()=="drag"){
+            shapeToDrag = selectShapeNearCurser(e.offsetX,e.offsetY,ctx,canvas.height,canvas.width,existingShapes);
+            console.log(shapeToDrag);
+        }
     });
     canvas.addEventListener("mouseup", (e) => {
-        clicked=false;
+        clicked=false
         if (getSelectedTool()=="none") {
             return;
         }
         if(isEraserSelected()){
             eraseShape(shapesToRemove,existingShapes);
             clearCanvas(ctx,canvas,existingShapes);
+            return;
+        }
+        if(getSelectedTool()==="drag"){
+            shapeToDrag=null;
             return;
         }
         let width = e.offsetX - startX;
@@ -123,8 +133,13 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
                 ctx.arc(startX+width/2,startY+height/2,getRadius(width,height),startAngle,endAngle);
                 ctx.stroke();
             }
-            if(isEraserSelected()){
+             if(isEraserSelected()){
                 selectShapesToerase(xCord,yCord,ctx,existingShapes,canvas.height,canvas.width,shapesToRemove);
+            }
+             if(getSelectedTool()=="drag"&&shapeToDrag!=null){
+                existingShapes=dragShape(xCord,yCord,canvas.height,canvas.width,shapeToDrag,existingShapes);
+                // console.log(existingShapes);
+                clearCanvas(ctx,canvas,existingShapes);
             }
         }
     });
@@ -188,7 +203,7 @@ function getRadius(height: number, width: number) {
 }
 function generateId() {
     
-    return Math.floor(Math.random()*20000000); // Ensures an integer ID
+    return Math.floor(Math.random()*20000000)+1; // Ensures an integer ID
 }
 
 function selectShapesToerase(xCord:number,yCord:number,ctx:CanvasRenderingContext2D,existingShapes:Shapes[],canvasHeight:number,canvasWidth:number, shapesToRemove:number[],threshold:number=1):number[] {
@@ -227,4 +242,67 @@ function selectShapesToerase(xCord:number,yCord:number,ctx:CanvasRenderingContex
 
 function eraseShape(shapesToBeRemoved: number[], existingShapes: Shapes[]) {
     existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(shape => !shapesToBeRemoved.includes(shape.id)));
+}
+function selectShapeNearCurser(xCord:number,yCord:number,ctx:CanvasRenderingContext2D,canvasHeight:number,canvasWidth:number,existingShapes:Shapes[],threshold:number=3):Shapes|null {
+    const xCordPercentage = toPercentage(xCord,canvasWidth);
+    const yCordPercentage = toPercentage(yCord,canvasHeight);
+    let selectedShape:Shapes|null = null;
+    existingShapes.map(shape=>{
+        if (shape.type === "circle") {
+            const { centerXPercent, centerYPercent, radiusPercent} = shape;
+            const distance = Math.sqrt((xCordPercentage - centerXPercent) ** 2 + (yCordPercentage - centerYPercent) ** 2);
+            if (Math.abs(distance - radiusPercent) <= threshold){
+                selectedShape=shape;
+            };
+        }
+
+        if (shape.type === "rectangle") {
+            const { xPercent, yPercent, widthPercent, heightPercent } = shape;
+            // Check if near any edge
+            const nearLeft = Math.abs(xCordPercentage - xPercent) <= threshold;
+            const nearRight = Math.abs(xCordPercentage - (xPercent + widthPercent)) <= threshold;
+            const nearTop = Math.abs(yCordPercentage - yPercent) <= threshold;
+            const nearBottom = Math.abs(yCordPercentage - (yPercent + heightPercent)) <= threshold;
+
+            const withinVerticalBounds = yCordPercentage >= yPercent && yCordPercentage <= yPercent + heightPercent;
+            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage<= xPercent + widthPercent;
+            if ((nearTop || nearBottom) && withinHorizontalBounds||((nearLeft || nearRight) && withinVerticalBounds)){
+                selectedShape = shape;
+            };
+        }
+    })
+    return selectedShape||null;
+}
+function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:number,shape:Shapes,existingShapes:Shapes[]):Shapes[] {
+    //removeShapes from the array
+    existingShapes=existingShapes.filter(x=>x.id!=shape.id)
+    
+    const newShape: Shapes = (() => {
+        switch (shape.type) {
+            case "rectangle":
+                return {
+                    type: "rectangle",
+                    id: shape.id,
+                    xPercent: toPercentage(xCord, canvasWidth),
+                    yPercent: toPercentage(yCord, canvasHeight),
+                    heightPercent: shape.heightPercent,
+                    widthPercent: shape.widthPercent,
+                };
+    
+            case "circle":
+                return {
+                    type: "circle",
+                    id: shape.id,
+                    centerXPercent: toPercentage(xCord, canvasWidth),
+                    centerYPercent: toPercentage(yCord, canvasHeight),
+                    radiusPercent: shape.radiusPercent,
+                };
+    
+            default:
+                throw new Error(`Unknown shape type`);
+        }
+    })();
+    existingShapes.push(newShape);
+    return existingShapes;
+    
 }

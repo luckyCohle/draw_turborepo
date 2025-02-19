@@ -2,19 +2,17 @@ import { httpUrl } from "@/url";
 import axios from "axios";
 import { store } from "@/redux/store";
 import { Tool } from "@/redux/toolbarSlice";
-import { shallowEqual } from "react-redux";
-
 
 type Shapes = {
     type: "rectangle";
-    id:number,
+    id: number,
     xPercent: number;
     yPercent: number;
     heightPercent: number;
     widthPercent: number;
 } | {
     type: "circle";
-    id:number;
+    id: number;
     centerXPercent: number;
     centerYPercent: number;
     radiusPercent: number;
@@ -25,7 +23,7 @@ type Shapes = {
 //     console.log("Tool changed:", selectedTool);
 //   });
 
-export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket,selectedToolRef: React.MutableRefObject<string>) {
+export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket, selectedToolRef: React.MutableRefObject<string>) {
     const ctx = canvas.getContext("2d");
     if (!ctx) {
         return;
@@ -33,49 +31,51 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     ctx.strokeStyle = "white";
 
     //set curser
-    
+
 
     function getSelectedTool() {
         return selectedToolRef.current as Tool; // Always get the latest value
     }
-    function isEraserSelected():boolean {
-        return getSelectedTool()=="eraser";
+    function isEraserSelected(): boolean {
+        return getSelectedTool() == "eraser";
     }
-    function updateCursor() {
-        console.log("updateCursor called, tool:", getSelectedTool());
-
-        if (isEraserSelected()) {
-            canvas.style.cursor = "url('/eraser.png') 10 10, auto"; // Set to custom eraser cursor
-        } else {
-            canvas.style.cursor = "default"; // Reset to default cursor
-        }
-    }
-    updateCursor()
+    
     store.subscribe(() => {
         const selectedTool = store.getState().toolbar.selectedTool;
         console.log("Tool changed:", selectedTool);
-        updateCursor();
-      });
-    //   updateCursor()
+       
+    });
+    
     socket.onmessage = (event) => {
         const messageData = JSON.parse(event.data);
         if (messageData.type == "sendShape") {
             const shapeProperties = JSON.parse(messageData.shapeProperties);
             const newShape: Shapes = {
                 type: messageData.shapeType,
-                id:messageData.id,
+                id: messageData.id,
                 ...shapeProperties
             };
             existingShapes.push(newShape);
             clearCanvas(ctx, canvas, existingShapes);
-        }else if (messageData.type=="deleteShapes") {
-           const shapesToBeRemoved = messageData.shapesToRemove;
-           shapesToBeRemoved.forEach((x: number)=>{
-            shapesToRemove.push(x);
-           })
-           eraseShape(shapesToRemove,existingShapes);
-           clearCanvas(ctx,canvas,existingShapes);
+        } else if (messageData.type == "deleteShapes") {
+            const shapesToBeRemoved = messageData.shapesToRemove;
+            shapesToBeRemoved.forEach((x: number) => {
+                shapesToRemove.push(x);
+            })
+            eraseShape(shapesToRemove, existingShapes);
+            clearCanvas(ctx, canvas, existingShapes);
 
+        }else if(messageData.type=="moveShape"){
+            // const shapeProperties = JSON.parse(messageData.shapeProperties);
+            const findShapeIndex = existingShapes.findIndex(x=>x.id==messageData.id);
+            existingShapes.splice(findShapeIndex,1);
+            const newShape: Shapes = {
+                type: messageData.shapeType,
+                id: messageData.id,
+                ...messageData.shapeProperties
+            };
+            existingShapes.push(newShape);
+            clearCanvas(ctx,canvas,existingShapes);
         }
     }
 
@@ -89,15 +89,16 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     }
 
     let existingShapes: Shapes[] = await getExistingShapes(roomId);
-    let shapesToRemove:number[]=[];
+    let shapesToRemove: number[] = [];
+    let shapeToDrag: Shapes | null = null;
 
     //initial values
     let clicked = false;
     let startX = 0;
     let startY = 0;
     const startAngle = 0;
-    const endAngle = 2*Math.PI;
-    
+    const endAngle = 2 * Math.PI;
+
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
@@ -106,63 +107,88 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     });
     resizeObserver.observe(canvas);
 
-    function createShape(type:Tool,height:number,width:number):Shapes{
-       return createShapeOnCanvas(type,startX,startY,canvas.width,canvas.height,height,width)
+    function createShape(type: Tool, height: number, width: number): Shapes {
+        return createShapeOnCanvas(type, startX, startY, canvas.width, canvas.height, height, width)
     }
 
     canvas.addEventListener("mousedown", (e) => {
         clicked = true;
         startX = e.offsetX;
         startY = e.offsetY;
-        shapesToRemove=[];
+        shapesToRemove = [];
+        if (getSelectedTool() == "drag") {
+            shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
+            console.log(shapeToDrag);
+        }
     });
     canvas.addEventListener("mouseup", (e) => {
-         clicked = false;
-    if (getSelectedTool() == "none") {
-        return;
-    }
-
-    if (isEraserSelected()) {
-        if (shapesToRemove.length > 0) {  // Only send if there are shapes to remove
-            if (socket.readyState === WebSocket.OPEN) {
-                console.log("Sending shapes to remove:", shapesToRemove);
-                socket.send(JSON.stringify({
-                    type: "deleteShapes",
-                    shapesToRemove, 
-                    roomId: roomId
-                }));
-                
-                // Clear the shapes locally after sending
-                eraseShape(shapesToRemove, existingShapes);
-                clearCanvas(ctx, canvas, existingShapes);
-                shapesToRemove = []; // Reset the array
-            } else {
-                console.error("WebSocket is not open. Cannot send delete message.");
-            }
+        clicked = false;
+        if (getSelectedTool() == "none") {
+            return;
         }
-        return;
-    }
+
+        if (isEraserSelected()) {
+            if (shapesToRemove.length > 0) {  // Only send if there are shapes to remove
+                if (socket.readyState === WebSocket.OPEN) {
+                    console.log("Sending shapes to remove:", shapesToRemove);
+                    socket.send(JSON.stringify({
+                        type: "deleteShapes",
+                        shapesToRemove,
+                        roomId: roomId
+                    }));
+
+                    // Clear the shapes locally after sending
+                    eraseShape(shapesToRemove, existingShapes);
+                    clearCanvas(ctx, canvas, existingShapes);
+                    shapesToRemove = []; // Reset the array
+                } else {
+                    console.error("WebSocket is not open. Cannot send delete message.");
+                }
+            }
+            return;
+        }
+
+
+
+        if (getSelectedTool() == "drag") {
+            if(shapeToDrag!=null){
+                if (socket.readyState === WebSocket.OPEN) {
+                    const properties = getNewShapeAfterDrag(shapeToDrag,e.offsetX,e.offsetY,canvas.height,canvas.width)
+                    socket.send(JSON.stringify({
+                        id:shapeToDrag.id,
+                        type: "moveShape",
+                        roomId,
+                        shapeType:shapeToDrag.type,
+                        shapeProperties:properties
+                    }))
+                shapeToDrag=null;
+                }else{
+                    console.error("WebSocket is not open.can't send update message");
+                }
+            }
+            return;
+        }
         let width = e.offsetX - startX;
         let height = e.offsetY - startY;
-        const newShape: Shapes = createShape(getSelectedTool(),height,width);
+        const newShape: Shapes = createShape(getSelectedTool(), height, width);
         const { type, ...properties } = newShape;
         existingShapes.push(newShape);
 
-        
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: "sendShape",
-                    id:newShape.id,
-                    shapeType: newShape.type,
-                    shapeProperties: JSON.stringify(properties),
-                    roomId: roomId
-                }));
-            } else {
-                console.warn("WebSocket is not open. Cannot send message.");
-            }
-        
-        
-       
+
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: "sendShape",
+                id: newShape.id,
+                shapeType: newShape.type,
+                shapeProperties: JSON.stringify(properties),
+                roomId: roomId
+            }));
+        } else {
+            console.warn("WebSocket is not open. Cannot send message.");
+        }
+
+
+
     });
 
     canvas.addEventListener("mousemove", (e) => {
@@ -173,15 +199,19 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
             let width = xCord - startX;
             clearCanvas(ctx, canvas, existingShapes);
             ctx.strokeStyle = "white";
-            if(getSelectedTool()=="rectangle"){
+            if (getSelectedTool() == "rectangle") {
                 ctx.strokeRect(startX, startY, width, height);
-            }else if (getSelectedTool()=="circle") {
+            } else if (getSelectedTool() == "circle") {
                 ctx.beginPath();
-                ctx.arc(startX+width/2,startY+height/2,getRadius(width,height),startAngle,endAngle);
+                ctx.arc(startX + width / 2, startY + height / 2, getRadius(width, height), startAngle, endAngle);
                 ctx.stroke();
             }
-            if(isEraserSelected()){
-                selectShapesToerase(xCord,yCord,ctx,existingShapes,canvas.height,canvas.width,shapesToRemove);
+            if (isEraserSelected()) {
+                selectShapesToerase(xCord, yCord, ctx, existingShapes, canvas.height, canvas.width, shapesToRemove);
+            }
+            if (getSelectedTool() == "drag" && shapeToDrag != null) {
+                existingShapes = dragShape(xCord, yCord, canvas.height, canvas.width, shapeToDrag, existingShapes);
+                clearCanvas(ctx, canvas, existingShapes);
             }
         }
     });
@@ -203,7 +233,7 @@ function redrawShapes(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
             const width = (shape.widthPercent * canvas.width) / 100;
             const height = (shape.heightPercent * canvas.height) / 100;
             ctx.strokeRect(x, y, width, height);
-            
+
         } else if (shape.type === "circle") {
             const centerX = (shape.centerXPercent * canvas.width) / 100;
             const centerY = (shape.centerYPercent * canvas.height) / 100;
@@ -214,12 +244,12 @@ function redrawShapes(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
         }
     });
 }
-const createShapeOnCanvas = (type:Tool,startX:number,startY:number,canvasWidth:number,canvasHeight:number,height:number,width:number): Shapes => {
+const createShapeOnCanvas = (type: Tool, startX: number, startY: number, canvasWidth: number, canvasHeight: number, height: number, width: number): Shapes => {
     switch (type) {
         case "rectangle":
             return {
                 type: "rectangle",
-                id:generateId(),
+                id: generateId(),
                 xPercent: toPercentage(startX, canvasWidth),
                 yPercent: toPercentage(startY, canvasHeight),
                 heightPercent: toPercentage(height, canvasHeight),
@@ -228,10 +258,10 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,canvasWidth:n
         case "circle":
             return {
                 type: "circle",
-                id:generateId(),
-                centerXPercent: toPercentage(startX+width/2, canvasWidth),
-                centerYPercent: toPercentage(startY+height/2, canvasHeight),
-                radiusPercent: toPercentage(getRadius(height,width), Math.max(canvasWidth, canvasHeight)),
+                id: generateId(),
+                centerXPercent: toPercentage(startX + width / 2, canvasWidth),
+                centerYPercent: toPercentage(startY + height / 2, canvasHeight),
+                radiusPercent: toPercentage(getRadius(height, width), Math.max(canvasWidth, canvasHeight)),
             };
         default:
             throw new Error(`Unknown shape type: ${type}`);
@@ -244,21 +274,21 @@ function getRadius(height: number, width: number) {
     return Math.sqrt((Math.abs(width) ** 2) + (Math.abs(height) ** 2)) / 2;
 }
 function generateId() {
-    
-    return Math.floor(Math.random()*20000000); // Ensures an integer ID
+
+    return Math.floor(Math.random() * 20000000); // Ensures an integer ID
 }
 
-function selectShapesToerase(xCord:number,yCord:number,ctx:CanvasRenderingContext2D,existingShapes:Shapes[],canvasHeight:number,canvasWidth:number, shapesToRemove:number[],threshold:number=1):number[] {
-    const xCordPercentage = toPercentage(xCord,canvasWidth);
-    const yCordPercentage = toPercentage(yCord,canvasHeight)
-    existingShapes.map(shape=>{
+function selectShapesToerase(xCord: number, yCord: number, ctx: CanvasRenderingContext2D, existingShapes: Shapes[], canvasHeight: number, canvasWidth: number, shapesToRemove: number[], threshold: number = 1): number[] {
+    const xCordPercentage = toPercentage(xCord, canvasWidth);
+    const yCordPercentage = toPercentage(yCord, canvasHeight)
+    existingShapes.map(shape => {
         if (shapesToRemove.includes(shape.id)) {
             return;
         }
         if (shape.type === "circle") {
-            const { centerXPercent, centerYPercent, radiusPercent} = shape;
+            const { centerXPercent, centerYPercent, radiusPercent } = shape;
             const distance = Math.sqrt((xCordPercentage - centerXPercent) ** 2 + (yCordPercentage - centerYPercent) ** 2);
-            if (Math.abs(distance - radiusPercent) <= threshold){
+            if (Math.abs(distance - radiusPercent) <= threshold) {
                 shapesToRemove.push(shape.id);
             };
         }
@@ -272,8 +302,8 @@ function selectShapesToerase(xCord:number,yCord:number,ctx:CanvasRenderingContex
             const nearBottom = Math.abs(yCordPercentage - (yPercent + heightPercent)) <= threshold;
 
             const withinVerticalBounds = yCordPercentage >= yPercent && yCordPercentage <= yPercent + heightPercent;
-            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage<= xPercent + widthPercent;
-            if ((nearTop || nearBottom) && withinHorizontalBounds||((nearLeft || nearRight) && withinVerticalBounds)){
+            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage <= xPercent + widthPercent;
+            if ((nearTop || nearBottom) && withinHorizontalBounds || ((nearLeft || nearRight) && withinVerticalBounds)) {
                 shapesToRemove.push(shape.id);
             };
         }
@@ -288,14 +318,14 @@ async function getExistingShapes(roomId: string): Promise<Shapes[]> {
             console.error("did not receive existingShapes from response");
             return [];
         }
-        
+
         const existingShapes: Shapes[] = res.data.existingShapes.map((x: any) => {
             const properties = x.properties;
-            
+
             if (x.shapeType === "rectangle") {
                 return {
                     type: "rectangle",
-                    id:x,
+                    id: x,
                     xPercent: properties.xPercent,
                     yPercent: properties.yPercent,
                     heightPercent: properties.heightPercent,
@@ -304,7 +334,7 @@ async function getExistingShapes(roomId: string): Promise<Shapes[]> {
             } else if (x.shapeType === "circle") {
                 return {
                     type: "circle",
-                    id:x.id,
+                    id: x.id,
                     centerXPercent: properties.centerXPercent,
                     centerYPercent: properties.centerYPercent,
                     radiusPercent: properties.radiusPercent,
@@ -320,4 +350,67 @@ async function getExistingShapes(roomId: string): Promise<Shapes[]> {
 }
 function eraseShape(shapesToBeRemoved: number[], existingShapes: Shapes[]) {
     existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(shape => !shapesToBeRemoved.includes(shape.id)));
+}
+function selectShapeNearCurser(xCord: number, yCord: number, ctx: CanvasRenderingContext2D, canvasHeight: number, canvasWidth: number, existingShapes: Shapes[], threshold: number = 3): Shapes | null {
+    const xCordPercentage = toPercentage(xCord, canvasWidth);
+    const yCordPercentage = toPercentage(yCord, canvasHeight);
+    let selectedShape: Shapes | null = null;
+    existingShapes.map(shape => {
+        if (shape.type === "circle") {
+            const { centerXPercent, centerYPercent, radiusPercent } = shape;
+            const distance = Math.sqrt((xCordPercentage - centerXPercent) ** 2 + (yCordPercentage - centerYPercent) ** 2);
+            if (Math.abs(distance - radiusPercent) <= threshold) {
+                selectedShape = shape;
+            };
+        }
+
+        if (shape.type === "rectangle") {
+            const { xPercent, yPercent, widthPercent, heightPercent } = shape;
+            // Check if near any edge
+            const nearLeft = Math.abs(xCordPercentage - xPercent) <= threshold;
+            const nearRight = Math.abs(xCordPercentage - (xPercent + widthPercent)) <= threshold;
+            const nearTop = Math.abs(yCordPercentage - yPercent) <= threshold;
+            const nearBottom = Math.abs(yCordPercentage - (yPercent + heightPercent)) <= threshold;
+
+            const withinVerticalBounds = yCordPercentage >= yPercent && yCordPercentage <= yPercent + heightPercent;
+            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage <= xPercent + widthPercent;
+            if ((nearTop || nearBottom) && withinHorizontalBounds || ((nearLeft || nearRight) && withinVerticalBounds)) {
+                selectedShape = shape;
+            };
+        }
+    })
+    return selectedShape || null;
+}
+function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWidth: number, shape: Shapes, existingShapes: Shapes[]): Shapes[] {
+    // Modify the array in place rather than creating a new one
+    existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(x => x.id != shape.id));
+    
+    const newShape: Shapes = getNewShapeAfterDrag(shape, xCord, yCord, canvasHeight, canvasWidth);
+    existingShapes.push(newShape);
+    return existingShapes;
+}
+function getNewShapeAfterDrag(oldShape:Shapes,xCord:number,yCord:number,canvasHeight:number,canvasWidth:number):Shapes {
+    switch (oldShape.type) {
+        case "rectangle":
+            return {
+                type: "rectangle",
+                id: oldShape.id,
+                xPercent: toPercentage(xCord, canvasWidth),
+                yPercent: toPercentage(yCord, canvasHeight),
+                heightPercent: oldShape.heightPercent,
+                widthPercent: oldShape.widthPercent,
+            };
+
+        case "circle":
+            return {
+                type: "circle",
+                id: oldShape.id,
+                centerXPercent: toPercentage(xCord, canvasWidth),
+                centerYPercent: toPercentage(yCord, canvasHeight),
+                radiusPercent: oldShape.radiusPercent,
+            };
+
+        default:
+            throw new Error(`Unknown shape type`);
+    }
 }
