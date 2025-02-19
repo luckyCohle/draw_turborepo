@@ -35,9 +35,11 @@ function App() {
                 Join a Room <ArrowRight className="w-5 h-5" />
               </button>
               </Link>
+             <Link href={"/demoCanvas"}>
               <button className="border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold hover:border-gray-300 transition-colors">
-                Watch Demo
+                 Demo
               </button>
+             </Link>
             </div>
           </div>
           <div className="mt-16 rounded-xl overflow-hidden shadow-2xl border-8 border-white">
@@ -110,9 +112,11 @@ function App() {
             <p className="text-indigo-100 text-xl mb-8 max-w-2xl mx-auto">
               Join thousands of teams and individuals who use Excelidraw to bring their ideas to life.
             </p>
-            <button className="bg-white text-indigo-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-indigo-50 transition-colors">
-              Get Started for Free
-            </button>
+            <Link href={"demoCanvas"}>
+                  <button className="bg-white text-indigo-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-indigo-50 transition-colors">
+                   Get Started for Free
+                  </button>
+            </Link>
           </div>
         </div>
       </section>
