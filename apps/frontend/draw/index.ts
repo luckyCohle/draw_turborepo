@@ -68,6 +68,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
         }else if(messageData.type=="moveShape"){
             // const shapeProperties = JSON.parse(messageData.shapeProperties);
             const findShapeIndex = existingShapes.findIndex(x=>x.id==messageData.id);
+            console.log(findShapeIndex)
             existingShapes.splice(findShapeIndex,1);
             const newShape: Shapes = {
                 type: messageData.shapeType,
@@ -89,6 +90,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     }
 
     let existingShapes: Shapes[] = await getExistingShapes(roomId);
+    console.log(existingShapes)
     let shapesToRemove: number[] = [];
     let shapeToDrag: Shapes | null = null;
 
@@ -96,6 +98,8 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     let clicked = false;
     let startX = 0;
     let startY = 0;
+    let dragOffsetX=0
+    let dragOffsetY=0;
     const startAngle = 0;
     const endAngle = 2 * Math.PI;
 
@@ -118,7 +122,17 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
         shapesToRemove = [];
         if (getSelectedTool() == "drag") {
             shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
-            console.log(shapeToDrag);
+            canvas.style.cursor="grabbing";
+            if (shapeToDrag) {
+                // Calculate offset based on shape type
+                if (shapeToDrag.type === "rectangle") {
+                    dragOffsetX = e.offsetX - toAbsolute(shapeToDrag.xPercent,canvas.width);
+                    dragOffsetY = e.offsetY - toAbsolute(shapeToDrag.yPercent , canvas.height);
+                } else {
+                    dragOffsetX = e.offsetX - toAbsolute(shapeToDrag.centerXPercent,  canvas.width );
+                    dragOffsetY = e.offsetY - toAbsolute(shapeToDrag.centerYPercent,  canvas.height);
+                }
+            }
         }
     });
     canvas.addEventListener("mouseup", (e) => {
@@ -151,9 +165,10 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
 
 
         if (getSelectedTool() == "drag") {
+            canvas.style.cursor="grab";
             if(shapeToDrag!=null){
                 if (socket.readyState === WebSocket.OPEN) {
-                    const properties = getNewShapeAfterDrag(shapeToDrag,e.offsetX,e.offsetY,canvas.height,canvas.width)
+                    const properties = getNewShapeAfterDrag(shapeToDrag,e.offsetX,e.offsetY,canvas.height,canvas.width,dragOffsetX,dragOffsetY)
                     socket.send(JSON.stringify({
                         id:shapeToDrag.id,
                         type: "moveShape",
@@ -210,7 +225,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                 selectShapesToerase(xCord, yCord, ctx, existingShapes, canvas.height, canvas.width, shapesToRemove);
             }
             if (getSelectedTool() == "drag" && shapeToDrag != null) {
-                existingShapes = dragShape(xCord, yCord, canvas.height, canvas.width, shapeToDrag, existingShapes);
+                existingShapes = dragShape(xCord, yCord, canvas.height, canvas.width,dragOffsetX,dragOffsetY, shapeToDrag, existingShapes);
                 clearCanvas(ctx, canvas, existingShapes);
             }
         }
@@ -270,6 +285,9 @@ const createShapeOnCanvas = (type: Tool, startX: number, startY: number, canvasW
 function toPercentage(value: number, total: number): number {
     return (value / total) * 100;
 }
+function toAbsolute(percentageValue:number,total:number):number {
+    return percentageValue*total/100
+}
 function getRadius(height: number, width: number) {
     return Math.sqrt((Math.abs(width) ** 2) + (Math.abs(height) ** 2)) / 2;
 }
@@ -325,7 +343,7 @@ async function getExistingShapes(roomId: string): Promise<Shapes[]> {
             if (x.shapeType === "rectangle") {
                 return {
                     type: "rectangle",
-                    id: x,
+                    id: x.id,
                     xPercent: properties.xPercent,
                     yPercent: properties.yPercent,
                     heightPercent: properties.heightPercent,
@@ -351,7 +369,7 @@ async function getExistingShapes(roomId: string): Promise<Shapes[]> {
 function eraseShape(shapesToBeRemoved: number[], existingShapes: Shapes[]) {
     existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(shape => !shapesToBeRemoved.includes(shape.id)));
 }
-function selectShapeNearCurser(xCord: number, yCord: number, ctx: CanvasRenderingContext2D, canvasHeight: number, canvasWidth: number, existingShapes: Shapes[], threshold: number = 3): Shapes | null {
+function selectShapeNearCurser(xCord: number, yCord: number, ctx: CanvasRenderingContext2D, canvasHeight: number, canvasWidth: number, existingShapes: Shapes[], threshold: number = 5): Shapes | null {
     const xCordPercentage = toPercentage(xCord, canvasWidth);
     const yCordPercentage = toPercentage(yCord, canvasHeight);
     let selectedShape: Shapes | null = null;
@@ -381,22 +399,25 @@ function selectShapeNearCurser(xCord: number, yCord: number, ctx: CanvasRenderin
     })
     return selectedShape || null;
 }
-function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWidth: number, shape: Shapes, existingShapes: Shapes[]): Shapes[] {
-    // Modify the array in place rather than creating a new one
-    existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(x => x.id != shape.id));
-    
-    const newShape: Shapes = getNewShapeAfterDrag(shape, xCord, yCord, canvasHeight, canvasWidth);
+function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWidth: number,dragOffsetX:number,dragOffsetY:number, shape: Shapes, existingShapes: Shapes[]): Shapes[] {
+    //remove the orignal position of shape
+    // console.log(existingShapes.length+" before filter"+existingShapes)
+    existingShapes=existingShapes.filter(x=>x.id!=shape.id)
+    // console.log(existingShapes.length+" after filter"+existingShapes)
+       
+    const newShape: Shapes = getNewShapeAfterDrag(shape, xCord, yCord, canvasHeight, canvasWidth,dragOffsetX,dragOffsetY);
     existingShapes.push(newShape);
+    console.log(existingShapes.length+" after push")
     return existingShapes;
 }
-function getNewShapeAfterDrag(oldShape:Shapes,xCord:number,yCord:number,canvasHeight:number,canvasWidth:number):Shapes {
+function getNewShapeAfterDrag(oldShape:Shapes,xCord:number,yCord:number,canvasHeight:number,canvasWidth:number,dragOffsetX:number,dragOffsetY:number):Shapes {
     switch (oldShape.type) {
         case "rectangle":
             return {
                 type: "rectangle",
                 id: oldShape.id,
-                xPercent: toPercentage(xCord, canvasWidth),
-                yPercent: toPercentage(yCord, canvasHeight),
+                xPercent: toPercentage(xCord-dragOffsetX, canvasWidth),
+                yPercent: toPercentage(yCord-dragOffsetY, canvasHeight),
                 heightPercent: oldShape.heightPercent,
                 widthPercent: oldShape.widthPercent,
             };
@@ -405,8 +426,8 @@ function getNewShapeAfterDrag(oldShape:Shapes,xCord:number,yCord:number,canvasHe
             return {
                 type: "circle",
                 id: oldShape.id,
-                centerXPercent: toPercentage(xCord, canvasWidth),
-                centerYPercent: toPercentage(yCord, canvasHeight),
+                centerXPercent: toPercentage(xCord-dragOffsetX, canvasWidth),
+                centerYPercent: toPercentage(yCord-dragOffsetY, canvasHeight),
                 radiusPercent: oldShape.radiusPercent,
             };
 

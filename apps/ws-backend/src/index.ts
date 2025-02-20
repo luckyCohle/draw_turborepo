@@ -164,6 +164,7 @@ wss.on('connection', async function connection(ws, request) {
       users.forEach(user => {
         if (user.rooms.includes(roomId)&& user.ws!=ws) {
             user.ws.send(JSON.stringify({
+                id,
                 type: "moveShape",
                 shapeType,
                 roomId,

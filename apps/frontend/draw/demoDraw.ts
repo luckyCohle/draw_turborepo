@@ -36,20 +36,10 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
     function isEraserSelected():boolean {
         return getSelectedTool()=="eraser";
     }
-    function updateCursor() {
-        console.log("updateCursor called, tool:", getSelectedTool());
-
-        if (isEraserSelected()) {
-            canvas.style.cursor = "url('/eraser.png') 10 10, auto"; // Set to custom eraser cursor
-        } else {
-            canvas.style.cursor = "default"; // Reset to default cursor
-        }
-    }
-    updateCursor()
+    
     store.subscribe(() => {
         const selectedTool = store.getState().toolbar.selectedTool;
         console.log("Tool changed:", selectedTool);
-        updateCursor();
       });
     //   updateCursor()
     
@@ -71,6 +61,8 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
     let clicked = false;
     let startX = 0;
     let startY = 0;
+    let dragOffsetX=0;
+    let dragOffsetY=0;
     const startAngle = 0;
     const endAngle = 2*Math.PI;
     
@@ -90,10 +82,20 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
         clicked = true;
         startX = e.offsetX;
         startY = e.offsetY;
-        shapesToRemove=[];
-        if(getSelectedTool()=="drag"){
-            shapeToDrag = selectShapeNearCurser(e.offsetX,e.offsetY,ctx,canvas.height,canvas.width,existingShapes);
-            console.log(shapeToDrag);
+        shapesToRemove = [];
+        if (getSelectedTool() == "drag") {
+            canvas.style.cursor="grabbing";
+            shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
+            if (shapeToDrag) {
+                // Calculate offset based on shape type
+                if (shapeToDrag.type === "rectangle") {
+                    dragOffsetX = e.offsetX - toAbsolute(shapeToDrag.xPercent,canvas.width);
+                    dragOffsetY = e.offsetY - toAbsolute(shapeToDrag.yPercent , canvas.height);
+                } else {
+                    dragOffsetX = e.offsetX - toAbsolute(shapeToDrag.centerXPercent,  canvas.width );
+                    dragOffsetY = e.offsetY - toAbsolute(shapeToDrag.centerYPercent,  canvas.height);
+                }
+            }
         }
     });
     canvas.addEventListener("mouseup", (e) => {
@@ -107,6 +109,7 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
             return;
         }
         if(getSelectedTool()==="drag"){
+            canvas.style.cursor="grab"
             shapeToDrag=null;
             return;
         }
@@ -137,7 +140,7 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
                 selectShapesToerase(xCord,yCord,ctx,existingShapes,canvas.height,canvas.width,shapesToRemove);
             }
              if(getSelectedTool()=="drag"&&shapeToDrag!=null){
-                existingShapes=dragShape(xCord,yCord,canvas.height,canvas.width,shapeToDrag,existingShapes);
+                existingShapes=dragShape(xCord,yCord,canvas.height,canvas.width,dragOffsetX,dragOffsetY,shapeToDrag,existingShapes);
                 // console.log(existingShapes);
                 clearCanvas(ctx,canvas,existingShapes);
             }
@@ -198,6 +201,9 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,canvasWidth:n
 function toPercentage(value: number, total: number): number {
     return (value / total) * 100;
 }
+function toAbsolute(percentageValue: number, total: number): number {
+    return  percentageValue*total/100;
+}
 function getRadius(height: number, width: number) {
     return Math.sqrt((Math.abs(width) ** 2) + (Math.abs(height) ** 2)) / 2;
 }
@@ -243,7 +249,7 @@ function selectShapesToerase(xCord:number,yCord:number,ctx:CanvasRenderingContex
 function eraseShape(shapesToBeRemoved: number[], existingShapes: Shapes[]) {
     existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(shape => !shapesToBeRemoved.includes(shape.id)));
 }
-function selectShapeNearCurser(xCord:number,yCord:number,ctx:CanvasRenderingContext2D,canvasHeight:number,canvasWidth:number,existingShapes:Shapes[],threshold:number=3):Shapes|null {
+function selectShapeNearCurser(xCord:number,yCord:number,ctx:CanvasRenderingContext2D,canvasHeight:number,canvasWidth:number,existingShapes:Shapes[],threshold:number=5):Shapes|null {
     const xCordPercentage = toPercentage(xCord,canvasWidth);
     const yCordPercentage = toPercentage(yCord,canvasHeight);
     let selectedShape:Shapes|null = null;
@@ -273,7 +279,7 @@ function selectShapeNearCurser(xCord:number,yCord:number,ctx:CanvasRenderingCont
     })
     return selectedShape||null;
 }
-function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:number,shape:Shapes,existingShapes:Shapes[]):Shapes[] {
+function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:number,dragOffsetX:number,dragOffsetY:number,shape:Shapes,existingShapes:Shapes[]):Shapes[] {
     //removeShapes from the array
     existingShapes=existingShapes.filter(x=>x.id!=shape.id)
     
@@ -283,8 +289,8 @@ function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:num
                 return {
                     type: "rectangle",
                     id: shape.id,
-                    xPercent: toPercentage(xCord, canvasWidth),
-                    yPercent: toPercentage(yCord, canvasHeight),
+                    xPercent: toPercentage(xCord-dragOffsetX, canvasWidth),
+                    yPercent: toPercentage(yCord-dragOffsetY, canvasHeight),
                     heightPercent: shape.heightPercent,
                     widthPercent: shape.widthPercent,
                 };
@@ -293,8 +299,8 @@ function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:num
                 return {
                     type: "circle",
                     id: shape.id,
-                    centerXPercent: toPercentage(xCord, canvasWidth),
-                    centerYPercent: toPercentage(yCord, canvasHeight),
+                    centerXPercent: toPercentage(xCord-dragOffsetX, canvasWidth),
+                    centerYPercent: toPercentage(yCord-dragOffsetY, canvasHeight),
                     radiusPercent: shape.radiusPercent,
                 };
     

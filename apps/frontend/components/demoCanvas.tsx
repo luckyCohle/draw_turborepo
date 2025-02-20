@@ -8,14 +8,14 @@ import { demoInitDraw } from "@/draw/demoDraw";
 export default function DemoCanvas() {
    const canvasRef = useRef<HTMLCanvasElement>(null);
    const selectedTool = useSelector((state: RootState) => state.toolbar.selectedTool);
-   const selectedToolRef = useRef<Tool>(selectedTool); // Create a ref to store tool
+   const selectedToolRef = useRef<Tool>(selectedTool); 
 
 useEffect(() => {
 
     selectedToolRef.current = selectedTool;
     if (canvasRef.current) {
         const canvas = canvasRef.current;
-        canvas.style.cursor = "default"; // Reset first
+        canvas.style.cursor = "default"; 
 
         setTimeout(() => {
             if (selectedTool === "eraser") {
@@ -34,9 +34,9 @@ useEffect(() => {
    useEffect(() => {
        if (canvasRef.current) {
            const canvas = canvasRef.current;
-           demoInitDraw(canvas, selectedToolRef); // Pass ref instead of value
+           demoInitDraw(canvas, selectedToolRef); 
        }
-   }, [canvasRef]); // Does NOT depend on selectedTool to avoid unnecessary resets
+   }, [canvasRef]); 
 
    return (
        <div className='w-screen h-screen '>
