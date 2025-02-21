@@ -1,5 +1,6 @@
 import { store } from "@/redux/store";
 import { Tool } from "@/redux/toolbarSlice";
+import { styleText } from "util";
 
 
 
@@ -17,7 +18,14 @@ type Shapes = {
     centerYPercent: number;
     radiusPercent: number;
 }
-
+|{
+    type:"line";
+    id:number;
+    startXPercent:number;
+    startYPercent:number;
+    endXPercent:number;
+    endYPercent:number;
+}
 
 
 export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: React.MutableRefObject<string>) {
@@ -27,8 +35,6 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
     }
     ctx.strokeStyle = "white";
 
-    //set curser
-    
 
     function getSelectedTool() {
         return selectedToolRef.current as Tool; // Always get the latest value
@@ -74,8 +80,8 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
     });
     resizeObserver.observe(canvas);
 
-    function createShape(type:Tool,height:number,width:number):Shapes{
-       return createShapeOnCanvas(type,startX,startY,canvas.width,canvas.height,height,width)
+    function createShape(type:Tool,endX:number,endY:number,height:number,width:number):Shapes{
+       return createShapeOnCanvas(type,startX,startY,endX,endY,canvas.width,canvas.height)
     }
 
     canvas.addEventListener("mousedown", (e) => {
@@ -91,9 +97,12 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
                 if (shapeToDrag.type === "rectangle") {
                     dragOffsetX = e.offsetX - toAbsolute(shapeToDrag.xPercent,canvas.width);
                     dragOffsetY = e.offsetY - toAbsolute(shapeToDrag.yPercent , canvas.height);
-                } else {
+                } else if(shapeToDrag.type==="circle") {
                     dragOffsetX = e.offsetX - toAbsolute(shapeToDrag.centerXPercent,  canvas.width );
                     dragOffsetY = e.offsetY - toAbsolute(shapeToDrag.centerYPercent,  canvas.height);
+                }else if(shapeToDrag.type === "line"){
+                    dragOffsetX=e.offsetX-toAbsolute(shapeToDrag.startXPercent,canvas.width);
+                    dragOffsetY=e.offsetY-toAbsolute(shapeToDrag.startYPercent,canvas.height);
                 }
             }
         }
@@ -115,7 +124,7 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
         }
         let width = e.offsetX - startX;
         let height = e.offsetY - startY;
-        const newShape: Shapes = createShape(getSelectedTool(),height,width);
+        const newShape: Shapes = createShape(getSelectedTool(),e.offsetX,e.offsetY,height,width);
         const { type, ...properties } = newShape;
         existingShapes.push(newShape);
         clearCanvas(ctx,canvas,existingShapes);
@@ -135,11 +144,14 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
                 ctx.beginPath();
                 ctx.arc(startX+width/2,startY+height/2,getRadius(width,height),startAngle,endAngle);
                 ctx.stroke();
-            }
-             if(isEraserSelected()){
+            }else if(getSelectedTool()=="line"){
+                ctx.beginPath();
+                ctx.moveTo(startX,startY);
+                ctx.lineTo(xCord,yCord);
+                ctx.stroke()
+            }else if(isEraserSelected()){
                 selectShapesToerase(xCord,yCord,ctx,existingShapes,canvas.height,canvas.width,shapesToRemove);
-            }
-             if(getSelectedTool()=="drag"&&shapeToDrag!=null){
+            }else if(getSelectedTool()=="drag"&&shapeToDrag!=null){
                 existingShapes=dragShape(xCord,yCord,canvas.height,canvas.width,dragOffsetX,dragOffsetY,shapeToDrag,existingShapes);
                 // console.log(existingShapes);
                 clearCanvas(ctx,canvas,existingShapes);
@@ -159,23 +171,34 @@ function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, s
 function redrawShapes(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[]) {
     shapesArray.forEach((shape) => {
         if (shape.type === "rectangle") {
-            const x = (shape.xPercent * canvas.width) / 100;
-            const y = (shape.yPercent * canvas.height) / 100;
-            const width = (shape.widthPercent * canvas.width) / 100;
-            const height = (shape.heightPercent * canvas.height) / 100;
+            const x = toAbsolute(shape.xPercent , canvas.width);
+            const y = toAbsolute(shape.yPercent , canvas.height);
+            const width = toAbsolute(shape.widthPercent , canvas.width);
+            const height = toAbsolute(shape.heightPercent , canvas.height);
             ctx.strokeRect(x, y, width, height);
             
         } else if (shape.type === "circle") {
-            const centerX = (shape.centerXPercent * canvas.width) / 100;
-            const centerY = (shape.centerYPercent * canvas.height) / 100;
-            const radius = (shape.radiusPercent * Math.max(canvas.width, canvas.height)) / 100;
+            const centerX = toAbsolute(shape.centerXPercent , canvas.width);
+            const centerY = toAbsolute(shape.centerYPercent , canvas.height);
+            const radius = toAbsolute(shape.radiusPercent , Math.max(canvas.width, canvas.height));
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }else if(shape.type==="line"){
+            const startX = toAbsolute(shape.startXPercent,canvas.width);
+            const startY = toAbsolute(shape.startYPercent,canvas.height);
+            const endX  =  toAbsolute(shape.endXPercent,canvas.width);
+            const endY  =  toAbsolute(shape.endYPercent,canvas.height);
+            ctx.beginPath();
+            ctx.moveTo(startX,startY);
+            ctx.lineTo(endX,endY);
             ctx.stroke();
         }
     });
 }
-const createShapeOnCanvas = (type:Tool,startX:number,startY:number,canvasWidth:number,canvasHeight:number,height:number,width:number): Shapes => {
+const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,endY:number,canvasWidth:number,canvasHeight:number): Shapes => {
+    let width = endX- startX;
+    let height = endY - startY;
     switch (type) {
         case "rectangle":
             return {
@@ -194,6 +217,16 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,canvasWidth:n
                 centerYPercent: toPercentage(startY+height/2, canvasHeight),
                 radiusPercent: toPercentage(getRadius(height,width), Math.max(canvasWidth, canvasHeight)),
             };
+        case "line":
+            return{
+                type:"line",
+                id:generateId(),
+                startXPercent: toPercentage(startX, canvasWidth),
+                startYPercent: toPercentage(startY, canvasHeight),
+                endXPercent: toPercentage(endX, canvasWidth),
+                endYPercent: toPercentage(endY, canvasHeight),
+
+            }
         default:
             throw new Error(`Unknown shape type: ${type}`);
     }
@@ -241,6 +274,29 @@ function selectShapesToerase(xCord:number,yCord:number,ctx:CanvasRenderingContex
                 shapesToRemove.push(shape.id);
             };
         }
+        if(shape.type==="line"){
+            const { startXPercent,startYPercent,endXPercent,endYPercent} = shape
+               // Calculate the shortest distance from point to line
+               const distance = getDistanceFromPointToLine(
+                startXPercent,
+                startYPercent,
+                endXPercent,
+                endYPercent,
+                xCordPercentage,
+                yCordPercentage
+            );
+
+            // Check if point is within the line segment bounds
+            const withinBounds = 
+                xCordPercentage >= Math.min(startXPercent, endXPercent) - threshold &&
+                xCordPercentage <= Math.max(startXPercent, endXPercent) + threshold &&
+                yCordPercentage >= Math.min(startYPercent, endYPercent) - threshold &&
+                yCordPercentage <= Math.max(startYPercent, endYPercent) + threshold;
+
+            if (distance <= threshold && withinBounds) {
+                shapesToRemove.push(shape.id);
+            }
+        }
     })
     return [...new Set(shapesToRemove)];
 }
@@ -276,12 +332,36 @@ function selectShapeNearCurser(xCord:number,yCord:number,ctx:CanvasRenderingCont
                 selectedShape = shape;
             };
         }
+        if(shape.type==="line"){
+            const { startXPercent,startYPercent,endXPercent,endYPercent} = shape
+               // Calculate the shortest distance from point to line
+               const distance = getDistanceFromPointToLine(
+                startXPercent,
+                startYPercent,
+                endXPercent,
+                endYPercent,
+                xCordPercentage,
+                yCordPercentage
+            );
+
+            // Check if point is within the line segment bounds
+            const withinBounds = 
+                xCordPercentage >= Math.min(startXPercent, endXPercent) - threshold &&
+                xCordPercentage <= Math.max(startXPercent, endXPercent) + threshold &&
+                yCordPercentage >= Math.min(startYPercent, endYPercent) - threshold &&
+                yCordPercentage <= Math.max(startYPercent, endYPercent) + threshold;
+
+            if (distance <= threshold && withinBounds) {
+                selectedShape=shape;
+            }
+        }
+        
     })
     return selectedShape||null;
 }
-function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:number,dragOffsetX:number,dragOffsetY:number,shape:Shapes,existingShapes:Shapes[]):Shapes[] {
-    //removeShapes from the array
-    existingShapes=existingShapes.filter(x=>x.id!=shape.id)
+function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWidth: number, dragOffsetX: number, dragOffsetY: number, shape: Shapes, existingShapes: Shapes[]): Shapes[] {
+    // Remove the shape being dragged from the array
+    existingShapes = existingShapes.filter(x => x.id != shape.id);
     
     const newShape: Shapes = (() => {
         switch (shape.type) {
@@ -289,8 +369,8 @@ function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:num
                 return {
                     type: "rectangle",
                     id: shape.id,
-                    xPercent: toPercentage(xCord-dragOffsetX, canvasWidth),
-                    yPercent: toPercentage(yCord-dragOffsetY, canvasHeight),
+                    xPercent: toPercentage(xCord - dragOffsetX, canvasWidth),
+                    yPercent: toPercentage(yCord - dragOffsetY, canvasHeight),
                     heightPercent: shape.heightPercent,
                     widthPercent: shape.widthPercent,
                 };
@@ -299,16 +379,61 @@ function dragShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:num
                 return {
                     type: "circle",
                     id: shape.id,
-                    centerXPercent: toPercentage(xCord-dragOffsetX, canvasWidth),
-                    centerYPercent: toPercentage(yCord-dragOffsetY, canvasHeight),
+                    centerXPercent: toPercentage(xCord - dragOffsetX, canvasWidth),
+                    centerYPercent: toPercentage(yCord - dragOffsetY, canvasHeight),
                     radiusPercent: shape.radiusPercent,
                 };
+
+            case "line": {
+                // Calculate the movement in percentage terms
+                const deltaXPercent = toPercentage(xCord - dragOffsetX, canvasWidth) - shape.startXPercent;
+                const deltaYPercent = toPercentage(yCord - dragOffsetY, canvasHeight) - shape.startYPercent;
+                
+                return {
+                    type: "line",
+                    id: shape.id,
+                    
+                    
+                    startXPercent: shape.startXPercent + deltaXPercent,
+                    startYPercent: shape.startYPercent + deltaYPercent,
+                    endXPercent: shape.endXPercent + deltaXPercent,
+                    endYPercent: shape.endYPercent + deltaYPercent
+                };
+            }
     
             default:
                 throw new Error(`Unknown shape type`);
         }
     })();
+    
     existingShapes.push(newShape);
     return existingShapes;
+}
+function getDistanceFromPointToLine(
+    startX: number, 
+    startY: number, 
+    endX: number, 
+    endY: number, 
+    pointX: number, 
+    pointY: number
+): number {
+    // If start and end points are the same, calculate direct distance to point
+    if (startX === endX && startY === endY) {
+        return Math.sqrt(Math.pow(pointX - startX, 2) + Math.pow(pointY - startY, 2));
+    }
+
+    // Calculate the shortest distance from point to line using vector math
+    const numerator = Math.abs(
+        (endY - startY) * pointX -
+        (endX - startX) * pointY +
+        endX * startY -
+        endY * startX
+    );
     
+    const denominator = Math.sqrt(
+        Math.pow(endY - startY, 2) + 
+        Math.pow(endX - startX, 2)
+    );
+
+    return numerator / denominator;
 }

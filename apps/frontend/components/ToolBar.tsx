@@ -1,17 +1,18 @@
 // Toolbar.tsx
-import { Square, Circle,Eraser,Hand } from "lucide-react";
+import { Square, Circle, Eraser, Hand, Minus } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { setSelectedTool,Tool } from "@/redux/toolbarSlice";
+import { setSelectedTool, Tool } from "@/redux/toolbarSlice";
 import { AppDispatch, RootState } from "@/redux/store";
 import { JSX } from "react";
 
 const ToolBar = () => {
-    const tools: { id: Tool; icon: JSX.Element }[] = [
-        { id: "rectangle", icon: <Square /> },
-        { id: "circle", icon: <Circle /> },
-        {id:"eraser",icon:<Eraser/>},
-        {id:"drag",icon:<Hand/>}
-      ];
+  const tools: { id: Tool; icon: JSX.Element }[] = [
+    { id: "drag", icon: <Hand /> },
+    { id: "rectangle", icon: <Square /> },
+    { id: "circle", icon: <Circle /> },
+    { id: "line", icon: <Minus /> },
+    { id: "eraser", icon: <Eraser /> },
+  ];
 
   const dispatch = useDispatch<AppDispatch>();
   const { selectedTool } = useSelector((state: RootState) => state.toolbar);
@@ -22,9 +23,8 @@ const ToolBar = () => {
         <button
           key={tool.id}
           onClick={() => dispatch(setSelectedTool(tool.id))}
-          className={`p-2 rounded-md   ${
-            selectedTool === tool.id ? "bg-blue-500 text-white" : "hover:bg-gray-200"
-          }`}
+          className={`p-2 rounded-md   ${selectedTool === tool.id ? "bg-blue-500 text-white" : "hover:bg-gray-200"
+            }`}
         >
           {tool.icon}
         </button>
