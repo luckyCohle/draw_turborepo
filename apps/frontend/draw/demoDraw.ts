@@ -1,5 +1,5 @@
 import { store } from "@/redux/store";
-import { Tool } from "@/redux/toolbarSlice";
+import { strokeColorType, strokeWidthType, Tool } from "@/redux/toolbarSlice";
 import { styleText } from "util";
 
 
@@ -7,6 +7,8 @@ import { styleText } from "util";
 type Shapes = {
     type: "rectangle";
     id:number,
+    strokeColour:strokeColorType;
+    strokeWidth:strokeWidthType
     xPercent: number;
     yPercent: number;
     heightPercent: number;
@@ -14,6 +16,8 @@ type Shapes = {
 } | {
     type: "circle";
     id:number;
+    strokeColour:strokeColorType;
+    strokeWidth:strokeWidthType
     centerXPercent: number;
     centerYPercent: number;
     radiusPercent: number;
@@ -21,6 +25,8 @@ type Shapes = {
 |{
     type:"line";
     id:number;
+    strokeColour:strokeColorType;
+    strokeWidth:strokeWidthType
     startXPercent:number;
     startYPercent:number;
     endXPercent:number;
@@ -29,6 +35,8 @@ type Shapes = {
 |{
     type:"pencil";
     id:number;
+    strokeColour:strokeColorType;
+    strokeWidth:strokeWidthType
     lineArray:lineArrayType[];
 }
 
@@ -38,16 +46,24 @@ type Shapes = {
     yPercent:number
  }
 
-export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: React.MutableRefObject<string>) {
+export async function demoInitDraw(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
     if (!ctx) {
         return;
     }
-    ctx.strokeStyle = "white";
+
 
 
     function getSelectedTool() {
-        return selectedToolRef.current as Tool; // Always get the latest value
+        return store.getState().toolbar.selectedTool;
+    }
+
+    function getStrokeColor() {
+        return store.getState().toolbar.strokeColor;
+    }
+
+    function getStrokeWidth() {
+        return store.getState().toolbar.strokeWidth;
     }
     function isEraserSelected():boolean {
         return getSelectedTool()=="eraser";
@@ -57,7 +73,7 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
         const selectedTool = store.getState().toolbar.selectedTool;
         console.log("Tool changed:", selectedTool);
       });
-    //   updateCursor()
+
     
 
     function resizeCanvas() {
@@ -92,7 +108,7 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
     resizeObserver.observe(canvas);
 
     function createShape(type:Tool,endX:number,endY:number,height:number,width:number):Shapes{
-       return createShapeOnCanvas(type,startX,startY,endX,endY,canvas.width,canvas.height,pencilStrokeArray)
+       return createShapeOnCanvas(type,startX,startY,endX,endY,canvas.width,canvas.height,pencilStrokeArray,getStrokeColor(),getStrokeWidth())
     }
 
     canvas.addEventListener("mousedown", (e) => {
@@ -112,6 +128,8 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
         }
         if (getSelectedTool() == "drag") {
             canvas.style.cursor="grabbing";
+            
+
             shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
             if (shapeToDrag) {
                 // Calculate offset based on shape type
@@ -158,47 +176,59 @@ export async function demoInitDraw(canvas: HTMLCanvasElement,selectedToolRef: Re
 
     canvas.addEventListener("mousemove", (e) => {
         if (clicked) {
+            // Get latest values directly before each draw operation
+            const currentStrokeColor = store.getState().toolbar.strokeColor;
+            const currentStrokeWidth = store.getState().toolbar.strokeWidth;
+            const currentTool = store.getState().toolbar.selectedTool;
+    
+            // Apply current styles
+            ctx.strokeStyle = currentStrokeColor;
+            ctx.lineWidth = currentStrokeWidth;
+    
             let xCord = e.offsetX;
             let yCord = e.offsetY;
             let height = yCord - startY;
             let width = xCord - startX;
-            if(getSelectedTool()!="pencil"){
+    
+            if(currentTool != "pencil"){
                 clearCanvas(ctx, canvas, existingShapes);
             }
-            ctx.strokeStyle = "white";
-            if(getSelectedTool()=="rectangle"){
+    
+            // Re-apply styles after clearCanvas
+            ctx.strokeStyle = currentStrokeColor;
+            ctx.lineWidth = currentStrokeWidth;
+    
+            if(currentTool == "rectangle"){
+                ctx.beginPath();
                 ctx.strokeRect(startX, startY, width, height);
-            }else if (getSelectedTool()=="circle") {
+            } else if (currentTool == "circle") {
                 ctx.beginPath();
-                ctx.arc(startX+width/2,startY+height/2,getRadius(width,height),startAngle,endAngle);
+                ctx.arc(startX+width/2, startY+height/2, getRadius(width,height), startAngle, endAngle);
                 ctx.stroke();
-            }else if(getSelectedTool()=="line"){
+            } else if(currentTool == "line"){
                 ctx.beginPath();
-                ctx.moveTo(startX,startY);
-                ctx.lineTo(xCord,yCord);
-                ctx.stroke()
-            }else if(getSelectedTool() == "pencil"){
+                ctx.moveTo(startX, startY);
                 ctx.lineTo(xCord, yCord);
                 ctx.stroke();
-        
+            } else if(currentTool == "pencil"){
+                ctx.lineTo(xCord, yCord);
+                ctx.stroke();
                 pencilStrokeArray.push({
                     actionType: "draw",
                     xPercent: toPercentage(xCord, canvas.width),
                     yPercent: toPercentage(yCord, canvas.height),
                 });
-            }else if(isEraserSelected()){
-                selectShapesToerase(xCord,yCord,ctx,existingShapes,canvas.height,canvas.width,shapesToRemove);
-            }else if(getSelectedTool()=="drag"&&shapeToDrag!=null){
-                existingShapes=dragShape(xCord,yCord,canvas.height,canvas.width,dragOffsetX,dragOffsetY,shapeToDrag,existingShapes);
-                // console.log(existingShapes);
-                clearCanvas(ctx,canvas,existingShapes);
+            }else if (isEraserSelected()) {
+                selectShapesToerase(xCord, yCord, ctx, existingShapes, canvas.height, canvas.width, shapesToRemove);
+            }else if (getSelectedTool() == "drag" && shapeToDrag != null) {
+                existingShapes = dragShape(xCord, yCord, canvas.height, canvas.width,dragOffsetX,dragOffsetY, shapeToDrag, existingShapes);
+                clearCanvas(ctx, canvas, existingShapes);
             }
         }
     });
 }
 
 function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[]) {
-    ctx.strokeStyle = "white";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawShapes(ctx, canvas, shapesArray);
 }
@@ -207,46 +237,49 @@ function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, s
 
 function redrawShapes(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[]) {
     shapesArray.forEach((shape) => {
+        // Set stroke styles before starting any path
+        ctx.strokeStyle = shape.strokeColour;
+        ctx.lineWidth = shape.strokeWidth;
+
         if (shape.type === "rectangle") {
-            const x = toAbsolute(shape.xPercent , canvas.width);
-            const y = toAbsolute(shape.yPercent , canvas.height);
-            const width = toAbsolute(shape.widthPercent , canvas.width);
-            const height = toAbsolute(shape.heightPercent , canvas.height);
+            const x = toAbsolute(shape.xPercent, canvas.width);
+            const y = toAbsolute(shape.yPercent, canvas.height);
+            const width = toAbsolute(shape.widthPercent, canvas.width);
+            const height = toAbsolute(shape.heightPercent, canvas.height);
             ctx.strokeRect(x, y, width, height);
-            
         } else if (shape.type === "circle") {
-            const centerX = toAbsolute(shape.centerXPercent , canvas.width);
-            const centerY = toAbsolute(shape.centerYPercent , canvas.height);
-            const radius = toAbsolute(shape.radiusPercent , Math.max(canvas.width, canvas.height));
+            const centerX = toAbsolute(shape.centerXPercent, canvas.width);
+            const centerY = toAbsolute(shape.centerYPercent, canvas.height);
+            const radius = toAbsolute(shape.radiusPercent, Math.max(canvas.width, canvas.height));
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
             ctx.stroke();
-        }else if(shape.type==="line"){
-            const startX = toAbsolute(shape.startXPercent,canvas.width);
-            const startY = toAbsolute(shape.startYPercent,canvas.height);
-            const endX  =  toAbsolute(shape.endXPercent,canvas.width);
-            const endY  =  toAbsolute(shape.endYPercent,canvas.height);
+        } else if (shape.type === "line") {
+            const startX = toAbsolute(shape.startXPercent, canvas.width);
+            const startY = toAbsolute(shape.startYPercent, canvas.height);
+            const endX = toAbsolute(shape.endXPercent, canvas.width);
+            const endY = toAbsolute(shape.endYPercent, canvas.height);
             ctx.beginPath();
-            ctx.moveTo(startX,startY);
-            ctx.lineTo(endX,endY);
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
             ctx.stroke();
-        }else if (shape.type === "pencil") {
+        } else if (shape.type === "pencil") {
             ctx.beginPath();
-            shape.lineArray.forEach(stroke=>{
-                const x = toAbsolute(stroke.xPercent,canvas.width);
-                const y = toAbsolute(stroke.yPercent,canvas.height);
-                if (stroke.actionType=="begin") {
-                    ctx.moveTo(x,y);
-                }else{
-                    ctx.lineTo(x,y);
+            shape.lineArray.forEach((stroke, index) => {
+                const x = toAbsolute(stroke.xPercent, canvas.width);
+                const y = toAbsolute(stroke.yPercent, canvas.height);
+                if (stroke.actionType === "begin") {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
                 }
-            })
-            ctx.stroke()
-            ctx.closePath()
+            });
+            ctx.stroke();
         }
     });
 }
-const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,endY:number,canvasWidth:number,canvasHeight:number,pencilStrokes:lineArrayType[]): Shapes => {
+
+const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,endY:number,canvasWidth:number,canvasHeight:number,pencilStrokes:lineArrayType[],strokeColor:strokeColorType,strokeWidth:strokeWidthType): Shapes => {
     let width = endX- startX;
     let height = endY - startY;
     switch (type) {
@@ -254,6 +287,8 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,e
             return {
                 type: "rectangle",
                 id:generateId(),
+                strokeColour:strokeColor,
+                strokeWidth:strokeWidth,
                 xPercent: toPercentage(startX, canvasWidth),
                 yPercent: toPercentage(startY, canvasHeight),
                 heightPercent: toPercentage(height, canvasHeight),
@@ -263,6 +298,8 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,e
             return {
                 type: "circle",
                 id:generateId(),
+                strokeColour:strokeColor,
+                strokeWidth:strokeWidth,
                 centerXPercent: toPercentage(startX+width/2, canvasWidth),
                 centerYPercent: toPercentage(startY+height/2, canvasHeight),
                 radiusPercent: toPercentage(getRadius(height,width), Math.max(canvasWidth, canvasHeight)),
@@ -271,6 +308,8 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,e
             return{
                 type:"line",
                 id:generateId(),
+                strokeColour:strokeColor,
+                strokeWidth:strokeWidth,
                 startXPercent: toPercentage(startX, canvasWidth),
                 startYPercent: toPercentage(startY, canvasHeight),
                 endXPercent: toPercentage(endX, canvasWidth),
@@ -281,6 +320,8 @@ const createShapeOnCanvas = (type:Tool,startX:number,startY:number,endX:number,e
             return{
                 type:"pencil",
                 id:generateId(),
+                strokeColour:strokeColor,
+                strokeWidth:strokeWidth,
                 lineArray:pencilStrokes
             }
         default:
@@ -338,6 +379,8 @@ function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWid
                 return {
                     type: "rectangle",
                     id: shape.id,
+                    strokeColour:shape.strokeColour,
+                    strokeWidth:shape.strokeWidth,
                     xPercent: toPercentage(xCord - dragOffsetX, canvasWidth),
                     yPercent: toPercentage(yCord - dragOffsetY, canvasHeight),
                     heightPercent: shape.heightPercent,
@@ -348,6 +391,8 @@ function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWid
                 return {
                     type: "circle",
                     id: shape.id,
+                    strokeColour:shape.strokeColour,
+                    strokeWidth:shape.strokeWidth,
                     centerXPercent: toPercentage(xCord - dragOffsetX, canvasWidth),
                     centerYPercent: toPercentage(yCord - dragOffsetY, canvasHeight),
                     radiusPercent: shape.radiusPercent,
@@ -361,7 +406,8 @@ function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWid
                 return {
                     type: "line",
                     id: shape.id,
-                    
+                    strokeColour:shape.strokeColour,
+                    strokeWidth:shape.strokeWidth,
                     
                     startXPercent: shape.startXPercent + deltaXPercent,
                     startYPercent: shape.startYPercent + deltaYPercent,
@@ -384,6 +430,8 @@ function dragShape(xCord: number, yCord: number, canvasHeight: number, canvasWid
                 return {
                     type: "pencil",
                     id: shape.id,
+                    strokeColour:shape.strokeColour,
+                    strokeWidth:shape.strokeWidth,
                     lineArray: newLineArray
                 };
             }

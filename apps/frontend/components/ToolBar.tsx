@@ -11,7 +11,7 @@ const ToolBar = () => {
     { id: "rectangle", icon: <Square /> },
     { id: "circle", icon: <Circle /> },
     { id: "line", icon: <Minus /> },
-    {id:"pencil",icon:<Pencil/>},
+    { id: "pencil",icon:<Pencil/>},
     { id: "eraser", icon: <Eraser /> },
   ];
 
