@@ -23,8 +23,17 @@ type Shapes = {
     startYPercent:number;
     endXPercent:number;
     endYPercent:number;
+}|{
+    type:"pencil";
+    id:number;
+    lineArray:lineArrayType[];
 }
 
+ type lineArrayType={
+    actionType:"begin"|"draw";
+    xPercent:number,
+    yPercent:number
+ }
 
 export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket, selectedToolRef: React.MutableRefObject<string>) {
     const ctx = canvas.getContext("2d");
@@ -96,6 +105,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     console.log(existingShapes)
     let shapesToRemove: number[] = [];
     let shapeToDrag: Shapes | null = null;
+    let pencilStrokeArray:lineArrayType[]=[];
 
     //initial values
     let clicked = false;
@@ -115,7 +125,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     resizeObserver.observe(canvas);
 
     function createShape(type: Tool,endX:number,endY:number, height: number, width: number): Shapes {
-        return createShapeOnCanvas(type, startX, startY,endX,endY, canvas.width, canvas.height)
+        return createShapeOnCanvas(type, startX, startY,endX,endY, canvas.width, canvas.height,pencilStrokeArray)
     }
 
     canvas.addEventListener("mousedown", (e) => {
@@ -123,6 +133,16 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
         startX = e.offsetX;
         startY = e.offsetY;
         shapesToRemove = [];
+        if(getSelectedTool()== "pencil"){
+            pencilStrokeArray=[]
+            pencilStrokeArray.push({
+                actionType:"begin",
+                xPercent:toPercentage(startX,canvas.width),
+                yPercent:toPercentage(startY,canvas.height)
+            })
+            ctx.beginPath();
+            ctx.moveTo(startX,startY);
+        }
         if (getSelectedTool() == "drag") {
             shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
             canvas.style.cursor="grabbing";
@@ -137,6 +157,9 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                 }else if(shapeToDrag.type === "line"){
                     dragOffsetX=e.offsetX-toAbsolute(shapeToDrag.startXPercent,canvas.width);
                     dragOffsetY=e.offsetY-toAbsolute(shapeToDrag.startYPercent,canvas.height);
+                }else if (shapeToDrag.type === "pencil") {
+                    dragOffsetX=e.offsetX-toAbsolute(shapeToDrag.lineArray[0].xPercent,canvas.width);
+                    dragOffsetY=e.offsetY-toAbsolute(shapeToDrag.lineArray[0].yPercent,canvas.height);
                 }
             }
         }
@@ -218,7 +241,9 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
             let yCord = e.offsetY;
             let height = yCord - startY;
             let width = xCord - startX;
-            clearCanvas(ctx, canvas, existingShapes);
+            if(getSelectedTool()!="pencil"){
+                clearCanvas(ctx, canvas, existingShapes);
+            }
             ctx.strokeStyle = "white";
             if (getSelectedTool() == "rectangle") {
                 ctx.strokeRect(startX, startY, width, height);
@@ -231,6 +256,15 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                 ctx.moveTo(startX,startY);
                 ctx.lineTo(xCord,yCord);
                 ctx.stroke()
+            }else if(getSelectedTool() == "pencil"){
+                ctx.lineTo(xCord, yCord);
+                ctx.stroke();
+        
+                pencilStrokeArray.push({
+                    actionType: "draw",
+                    xPercent: toPercentage(xCord, canvas.width),
+                    yPercent: toPercentage(yCord, canvas.height),
+                });
             }else if (isEraserSelected()) {
                 selectShapesToerase(xCord, yCord, ctx, existingShapes, canvas.height, canvas.width, shapesToRemove);
             }else if (getSelectedTool() == "drag" && shapeToDrag != null) {
@@ -274,10 +308,23 @@ function redrawShapes(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
             ctx.moveTo(startX,startY);
             ctx.lineTo(endX,endY);
             ctx.stroke();
+        }else if (shape.type === "pencil") {
+            ctx.beginPath();
+            shape.lineArray.forEach(stroke=>{
+                const x = toAbsolute(stroke.xPercent,canvas.width);
+                const y = toAbsolute(stroke.yPercent,canvas.height);
+                if (stroke.actionType=="begin") {
+                    ctx.moveTo(x,y);
+                }else{
+                    ctx.lineTo(x,y);
+                }
+            })
+            ctx.stroke()
+            ctx.closePath()
         }
     });
 }
-const createShapeOnCanvas = (type: Tool, startX: number, startY: number,endX:number,endY:number, canvasWidth: number, canvasHeight:number): Shapes => {
+const createShapeOnCanvas = (type: Tool, startX: number, startY: number,endX:number,endY:number, canvasWidth: number, canvasHeight:number,pencilStrokes:lineArrayType[]): Shapes => {
     let width = endX- startX;
     let height = endY - startY;
     switch (type) {
@@ -308,6 +355,12 @@ const createShapeOnCanvas = (type: Tool, startX: number, startY: number,endX:num
                     endYPercent: toPercentage(endY, canvasHeight),
     
                 }
+                case "pencil":
+                    return{
+                        type:"pencil",
+                        id:generateId(),
+                        lineArray:pencilStrokes
+                    }
         default:
             throw new Error(`Unknown shape type: ${type}`);
     }
@@ -327,56 +380,12 @@ function generateId() {
 }
 
 function selectShapesToerase(xCord: number, yCord: number, ctx: CanvasRenderingContext2D, existingShapes: Shapes[], canvasHeight: number, canvasWidth: number, shapesToRemove: number[], threshold: number = 1): number[] {
-    const xCordPercentage = toPercentage(xCord, canvasWidth);
-    const yCordPercentage = toPercentage(yCord, canvasHeight)
     existingShapes.map(shape => {
         if (shapesToRemove.includes(shape.id)) {
             return;
         }
-        if (shape.type === "circle") {
-            const { centerXPercent, centerYPercent, radiusPercent } = shape;
-            const distance = Math.sqrt((xCordPercentage - centerXPercent) ** 2 + (yCordPercentage - centerYPercent) ** 2);
-            if (Math.abs(distance - radiusPercent) <= threshold) {
-                shapesToRemove.push(shape.id);
-            };
-        }
-
-        if (shape.type === "rectangle") {
-            const { xPercent, yPercent, widthPercent, heightPercent } = shape;
-            // Check if near any edge
-            const nearLeft = Math.abs(xCordPercentage - xPercent) <= threshold;
-            const nearRight = Math.abs(xCordPercentage - (xPercent + widthPercent)) <= threshold;
-            const nearTop = Math.abs(yCordPercentage - yPercent) <= threshold;
-            const nearBottom = Math.abs(yCordPercentage - (yPercent + heightPercent)) <= threshold;
-
-            const withinVerticalBounds = yCordPercentage >= yPercent && yCordPercentage <= yPercent + heightPercent;
-            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage <= xPercent + widthPercent;
-            if ((nearTop || nearBottom) && withinHorizontalBounds || ((nearLeft || nearRight) && withinVerticalBounds)) {
-                shapesToRemove.push(shape.id);
-            };
-        }
-        if(shape.type==="line"){
-            const { startXPercent,startYPercent,endXPercent,endYPercent} = shape
-               // Calculate the shortest distance from point to line
-               const distance = getDistanceFromPointToLine(
-                startXPercent,
-                startYPercent,
-                endXPercent,
-                endYPercent,
-                xCordPercentage,
-                yCordPercentage
-            );
-
-            // Check if point is within the line segment bounds
-            const withinBounds = 
-                xCordPercentage >= Math.min(startXPercent, endXPercent) - threshold &&
-                xCordPercentage <= Math.max(startXPercent, endXPercent) + threshold &&
-                yCordPercentage >= Math.min(startYPercent, endYPercent) - threshold &&
-                yCordPercentage <= Math.max(startYPercent, endYPercent) + threshold;
-
-            if (distance <= threshold && withinBounds) {
-                shapesToRemove.push(shape.id);
-            }
+        if (checkShape(xCord,yCord,canvasHeight,canvasWidth,shape)) {
+            shapesToRemove.push(shape.id);
         }
     })
     return [...new Set(shapesToRemove)];
@@ -423,54 +432,11 @@ function eraseShape(shapesToBeRemoved: number[], existingShapes: Shapes[]) {
     existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(shape => !shapesToBeRemoved.includes(shape.id)));
 }
 function selectShapeNearCurser(xCord: number, yCord: number, ctx: CanvasRenderingContext2D, canvasHeight: number, canvasWidth: number, existingShapes: Shapes[], threshold: number = 5): Shapes | null {
-    const xCordPercentage = toPercentage(xCord, canvasWidth);
-    const yCordPercentage = toPercentage(yCord, canvasHeight);
+   
     let selectedShape: Shapes | null = null;
     existingShapes.map(shape => {
-        if (shape.type === "circle") {
-            const { centerXPercent, centerYPercent, radiusPercent } = shape;
-            const distance = Math.sqrt((xCordPercentage - centerXPercent) ** 2 + (yCordPercentage - centerYPercent) ** 2);
-            if (Math.abs(distance - radiusPercent) <= threshold) {
-                selectedShape = shape;
-            };
-        }
-
-        if (shape.type === "rectangle") {
-            const { xPercent, yPercent, widthPercent, heightPercent } = shape;
-            // Check if near any edge
-            const nearLeft = Math.abs(xCordPercentage - xPercent) <= threshold;
-            const nearRight = Math.abs(xCordPercentage - (xPercent + widthPercent)) <= threshold;
-            const nearTop = Math.abs(yCordPercentage - yPercent) <= threshold;
-            const nearBottom = Math.abs(yCordPercentage - (yPercent + heightPercent)) <= threshold;
-
-            const withinVerticalBounds = yCordPercentage >= yPercent && yCordPercentage <= yPercent + heightPercent;
-            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage <= xPercent + widthPercent;
-            if ((nearTop || nearBottom) && withinHorizontalBounds || ((nearLeft || nearRight) && withinVerticalBounds)) {
-                selectedShape = shape;
-            };
-        }
-        if(shape.type==="line"){
-            const { startXPercent,startYPercent,endXPercent,endYPercent} = shape
-               // Calculate the shortest distance from point to line
-               const distance = getDistanceFromPointToLine(
-                startXPercent,
-                startYPercent,
-                endXPercent,
-                endYPercent,
-                xCordPercentage,
-                yCordPercentage
-            );
-
-            // Check if point is within the line segment bounds
-            const withinBounds = 
-                xCordPercentage >= Math.min(startXPercent, endXPercent) - threshold &&
-                xCordPercentage <= Math.max(startXPercent, endXPercent) + threshold &&
-                yCordPercentage >= Math.min(startYPercent, endYPercent) - threshold &&
-                yCordPercentage <= Math.max(startYPercent, endYPercent) + threshold;
-
-            if (distance <= threshold && withinBounds) {
-                selectedShape=shape;
-            }
+        if (checkShape(xCord,yCord,canvasHeight,canvasWidth,shape)) {
+            selectedShape=shape;
         }
     })
     return selectedShape || null;
@@ -517,6 +483,24 @@ function getNewShapeAfterDrag(oldShape:Shapes,xCord:number,yCord:number,canvasHe
                 endXPercent: oldShape.endXPercent + deltaXPercent,
                 endYPercent: oldShape.endYPercent + deltaYPercent
             }
+            case "pencil": {
+                const xCurMove = xCord-(dragOffsetX+toAbsolute(oldShape.lineArray[0].xPercent,canvasWidth));
+                const yCurMove = yCord-(dragOffsetY+toAbsolute(oldShape.lineArray[0].yPercent,canvasHeight)); // Fixed to use dragOffsetY
+                const xMovePercent = toPercentage(xCurMove,canvasWidth);
+                const yMovePercent = toPercentage(yCurMove,canvasHeight);
+                
+                const newLineArray = oldShape.lineArray.map(el => ({
+                    actionType: el.actionType,
+                    xPercent: el.xPercent + xMovePercent,
+                    yPercent: el.yPercent + yMovePercent
+                }));
+                
+                return {
+                    type: "pencil",
+                    id: oldShape.id,
+                    lineArray: newLineArray
+                };
+            }
 
         default:
             throw new Error(`Unknown shape type`);
@@ -549,4 +533,94 @@ function getDistanceFromPointToLine(
     );
 
     return numerator / denominator;
+}
+function checkShape(xCord:number,yCord:number,canvasHeight:number,canvasWidth:number,shapeToCheck:Shapes,threshold:number=5) {
+    const xCordPercentage = toPercentage(xCord,canvasWidth);
+    const yCordPercentage = toPercentage(yCord,canvasHeight);
+    
+        if (shapeToCheck.type === "circle") {
+            const { centerXPercent, centerYPercent, radiusPercent} = shapeToCheck;
+            // Convert to absolute pixels
+            const centerX = toAbsolute(centerXPercent, canvasWidth);
+            const centerY = toAbsolute(centerYPercent, canvasHeight);
+            const radius = toAbsolute(radiusPercent, Math.max(canvasWidth, canvasHeight));
+            const x = toAbsolute(xCordPercentage, canvasWidth);
+            const y = toAbsolute(yCordPercentage, canvasHeight);
+            
+            const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+            if (Math.abs(distance - radius) <= threshold){
+                return true;
+            };
+        }
+
+        if (shapeToCheck.type === "rectangle") {
+            const { xPercent, yPercent, widthPercent, heightPercent } = shapeToCheck;
+            // Check if near any edge
+            const nearLeft = Math.abs(xCordPercentage - xPercent) <= threshold;
+            const nearRight = Math.abs(xCordPercentage - (xPercent + widthPercent)) <= threshold;
+            const nearTop = Math.abs(yCordPercentage - yPercent) <= threshold;
+            const nearBottom = Math.abs(yCordPercentage - (yPercent + heightPercent)) <= threshold;
+
+            const withinVerticalBounds = yCordPercentage >= yPercent && yCordPercentage <= yPercent + heightPercent;
+            const withinHorizontalBounds = xCordPercentage >= xPercent && xCordPercentage<= xPercent + widthPercent;
+            if ((nearTop || nearBottom) && withinHorizontalBounds||((nearLeft || nearRight) && withinVerticalBounds)){
+                return true;
+            };
+        }
+        if(shapeToCheck.type==="line"){
+            const { startXPercent,startYPercent,endXPercent,endYPercent} = shapeToCheck
+               // Calculate the shortest distance from point to line
+               const distance = getDistanceFromPointToLine(
+                startXPercent,
+                startYPercent,
+                endXPercent,
+                endYPercent,
+                xCordPercentage,
+                yCordPercentage
+            );
+
+            // Check if point is within the line segment bounds
+            const withinBounds = 
+                xCordPercentage >= Math.min(startXPercent, endXPercent) - threshold &&
+                xCordPercentage <= Math.max(startXPercent, endXPercent) + threshold &&
+                yCordPercentage >= Math.min(startYPercent, endYPercent) - threshold &&
+                yCordPercentage <= Math.max(startYPercent, endYPercent) + threshold;
+
+            if (distance <= threshold && withinBounds) {
+               return true;
+            }
+        }
+        if (shapeToCheck.type === "pencil") {
+            // For pencil, check each line segment in the stroke
+            const lineArray = shapeToCheck.lineArray;
+            for (let i = 1; i < lineArray.length; i++) {
+                const prevPoint = lineArray[i - 1];
+                const currentPoint = lineArray[i];
+                
+                // Calculate distance from cursor to this line segment
+                const distance = getDistanceFromPointToLine(
+                    prevPoint.xPercent,
+                    prevPoint.yPercent,
+                    currentPoint.xPercent,
+                    currentPoint.yPercent,
+                    xCordPercentage,
+                    yCordPercentage
+                );
+
+                // Check if point is within the bounds of this line segment
+                const withinBounds = 
+                    xCordPercentage >= Math.min(prevPoint.xPercent, currentPoint.xPercent) - threshold &&
+                    xCordPercentage <= Math.max(prevPoint.xPercent, currentPoint.xPercent) + threshold &&
+                    yCordPercentage >= Math.min(prevPoint.yPercent, currentPoint.yPercent) - threshold &&
+                    yCordPercentage <= Math.max(prevPoint.yPercent, currentPoint.yPercent) + threshold;
+
+                if (distance <= threshold && withinBounds) {
+                    return true;
+                    break;
+                }
+            }
+        } 
+        
+    
+    return false;
 }

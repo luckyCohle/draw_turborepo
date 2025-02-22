@@ -159,7 +159,7 @@ wss.on('connection', async function connection(ws, request) {
           }
         });
       
-        console.log("Shape updated:", update);
+        // console.log("Shape updated:", update);
          //broadcast
       users.forEach(user => {
         if (user.rooms.includes(roomId)&& user.ws!=ws) {
