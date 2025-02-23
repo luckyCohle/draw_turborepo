@@ -8,12 +8,12 @@ import Menu from "@/components/Menu";
 
 export default function DemoCanvas() {
    const canvasRef = useRef<HTMLCanvasElement>(null);
-   const {selectedTool,strokeColor,canvasColour,strokeWidth} = useSelector((state: RootState) => state.toolbar);
+   const {selectedTool,strokeColor,canvasColour,strokeWidth,fontSize} = useSelector((state: RootState) => state.toolbar);
    const selectedToolRef = useRef<Tool>(selectedTool);
    const strokeColorRef = useRef<strokeColorType>(strokeColor);
    const strokeWidthRef = useRef<strokeWidthType>(strokeWidth); 
    const [displayMenu, setDisplayMenu] = useState(false);
-   const displayMenuForTools:Tool[] =["circle","rectangle","pencil","line"];
+   const displayMenuForTools:Tool[] =["circle","rectangle","pencil","line","text"];
 
    useEffect(() => {
     selectedToolRef.current = selectedTool;
@@ -50,7 +50,7 @@ export default function DemoCanvas() {
        <div className='w-screen h-screen '>
            <ToolBar />
            <canvas ref={canvasRef} className='w-full h-full ' style={{"backgroundColor":canvasColour}}></canvas>
-           {displayMenu&&<Menu/>}
+           {displayMenu&&<Menu isText={selectedTool === "text"}/>}
        </div>
    );
 }

@@ -1,10 +1,11 @@
 import { AppDispatch, RootState } from '@/redux/store';
-import { canvasColourType, setStrokeColor, strokeColorType, setCanvasColour, setStrokeWidth, strokeWidthType } from '@/redux/toolbarSlice';
+import { canvasColourType, setStrokeColor, strokeColorType, setCanvasColour, setStrokeWidth, strokeWidthType,setFontSize } from '@/redux/toolbarSlice';
 import { Minus } from 'lucide-react';
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-export default function Menu() {
+export default function Menu({isText}:{isText:Boolean}) {
+  const {fontSize} = useSelector((state:RootState)=>state.toolbar)
   const strokeColourArray: { id: strokeColorType; color: string }[] = [
     { id: "#ffffff", color: "#ffffff" },
     { id: "#e03131", color: "#e03131" },
@@ -17,13 +18,14 @@ export default function Menu() {
     { id: "#000000", color: "#000000" },
     { id: "#121212", color: "#121212" },
     { id: "#1e1e1e", color: "#1e1e1e" },
-    { id: "#252525", color: "#252525" },
-    { id: "#2c2c2c", color: "#2c2c2c" },
+    { id: "#5C4033", color: "#5C4033" },
+    { id: "#6E260E", color: "#6E260E" },
   ];
 
   const strokeWidthArray: strokeWidthType[] = [1, 2, 3];
+  const fontSizes = [{category:"S",size:14},{category:"M",size:18},{category:"L",size:28},{category:"XL",size:48}];
   const dispatch = useDispatch<AppDispatch>();
-  const { selectedTool, strokeColor, canvasColour, strokeWidth } = useSelector((state: RootState) => state.toolbar);
+  const {  strokeColor, canvasColour, strokeWidth } = useSelector((state: RootState) => state.toolbar);
 
   const handleStrokeColorChange = (color: strokeColorType) => {
     dispatch(setStrokeColor(color));
@@ -35,6 +37,9 @@ export default function Menu() {
 
   const handleStrokeWidthChange = (width: strokeWidthType) => {
     dispatch(setStrokeWidth(width));
+  };
+  const handleFontChange = (font:number) => {
+    dispatch(setFontSize(font));
   };
 
   return (
@@ -56,7 +61,7 @@ export default function Menu() {
       </div>
 
       {/* Stroke Width Picker */}
-      <div>
+      {/* <div>
         <h3 className="text-white">Stroke Width</h3>
         <div className="flex gap-2">
           {strokeWidthArray.map((x) => (
@@ -71,8 +76,34 @@ export default function Menu() {
             </button>
           ))}
         </div>
-      </div>
-
+      </div> */}
+      {/* Font Size Picker */}
+      {isText?
+      <div>
+        <h3 className="text-white">Font Size</h3>
+        <div>
+          {fontSizes.map(x=>{
+            return(
+              <button className={`p-2 rounded-lg text-white mr-2 ${x.size == fontSize?"bg-violet-600":" bg-slate-700"} `} key={"font-"+x.category} onClick={()=>handleFontChange(x.size)} >{x.category}</button>
+            )
+          })}
+        </div>
+      </div>:<div>
+        <h3 className="text-white">Stroke Width</h3>
+        <div className="flex gap-2">
+          {strokeWidthArray.map((x) => (
+            <button
+              key={"stroke" + x}
+              className={`p-1 rounded-full hover:bg-gray-600 transition-colors ${
+                strokeWidth === x ? "bg-gray-500" : "bg-gray-700"
+              }`}
+              onClick={() => handleStrokeWidthChange(x)}
+            >
+              <Minus strokeWidth={x} className="text-white" />
+            </button>
+          ))}
+        </div>
+      </div>}
       {/* Canvas Background Picker */}
       <div>
         <h3 className="text-white">Canvas Background</h3>

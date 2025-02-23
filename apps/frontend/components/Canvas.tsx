@@ -13,7 +13,7 @@ export default function Canvas({ roomId, socket }: { roomId: string; socket: Web
     const strokeColorRef = useRef<strokeColorType>(strokeColor);
       const strokeWidthRef = useRef<strokeWidthType>(strokeWidth); 
       const [displayMenu, setDisplayMenu] = useState(false);
-      const displayMenuForTools:Tool[] =["circle","rectangle","pencil","line"];
+      const displayMenuForTools:Tool[] =["circle","rectangle","pencil","line","text"];
 
 
    useEffect(() => {
@@ -51,7 +51,7 @@ export default function Canvas({ roomId, socket }: { roomId: string; socket: Web
     <div className='w-screen h-screen '>
     <ToolBar />
     <canvas ref={canvasRef} className='w-full h-full ' style={{"backgroundColor":canvasColour}}></canvas>
-    {displayMenu&&<Menu/>}
+    {displayMenu&&<Menu isText={selectedTool === 'text'}/>}
 </div>
    );
 }

@@ -59,6 +59,7 @@ wss.on('connection', async function connection(ws, request) {
         // Send shape
         if (parsedData.type === "sendShape") {
           const { roomId, shapeProperties, shapeType,id } = parsedData;
+          // console.log(parsedData);
           const sender = users.find(user => user.ws === ws);
 
           if (!sender) return;

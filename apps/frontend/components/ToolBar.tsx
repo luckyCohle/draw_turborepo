@@ -1,5 +1,5 @@
 // Toolbar.tsx
-import { Square, Circle, Eraser, Hand, Minus,Pencil } from "lucide-react";
+import { Square, Circle, Eraser, Hand, Minus,Pencil,Type } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedTool, Tool } from "@/redux/toolbarSlice";
 import { AppDispatch, RootState } from "@/redux/store";
@@ -12,6 +12,7 @@ const ToolBar = () => {
     { id: "circle", icon: <Circle /> },
     { id: "line", icon: <Minus /> },
     { id: "pencil",icon:<Pencil/>},
+    {id:"text",icon:<Type/>},
     { id: "eraser", icon: <Eraser /> },
   ];
 
