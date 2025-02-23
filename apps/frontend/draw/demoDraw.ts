@@ -1,12 +1,15 @@
 import { store } from "@/redux/store";
 import { lineArrayType, Shapes } from "@/interfaces/shape";
 import {createShapeOnCanvas, dragShape, redrawShapes, selectShapeNearCurser} from "@/utility/drawUtil"
-import {  generateId, getRadius, selectShapesToerase, toAbsolute, toPercentage } from "@/utility/canvasCalc";
-import { strokeColorType, Tool } from "@/redux/toolbarSlice";
+import {   getRadius, selectShapesToerase, toAbsolute, toPercentage } from "@/utility/canvasCalc";
+import {  Tool } from "@/redux/toolbarSlice";
 import { addText, addTextInput } from "@/utility/textDisplay";
+import { current } from "@reduxjs/toolkit";
+import { Zoom } from "react-toastify";
 
 
-export async function demoInitDraw(canvas: HTMLCanvasElement) {
+export async function demoInitDraw(canvas: HTMLCanvasElement,zoom:number,shapeArrayRef:React.MutableRefObject<Shapes[]>) {
+    const zoomScale = zoom/100;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
         return;
@@ -41,12 +44,12 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
         if (ctx) {
-            clearCanvas(ctx, canvas, existingShapes);
-            redrawShapes(ctx, canvas, existingShapes);
+            clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
+            redrawShapes(ctx, canvas, shapeArrayRef.current,zoom,newViewportX,newViewportY);
         }
     }
 
-    let existingShapes: Shapes[] =[];
+    // let existingShapes: Shapes[] =shapeArrayRef.current;
     let shapesToRemove:number[]=[];
     let shapeToDrag:Shapes|null=null;
     let pencilStrokeArray:lineArrayType[]=[];
@@ -60,6 +63,9 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
     let dragOffsetY=0;
     const startAngle = 0;
     const endAngle = 2*Math.PI;
+    const scale = zoom / 100;
+    const newViewportX = (canvas.width / 2) * (1 - scale);
+    const newViewportY = (canvas.height / 2) * (1 - scale);
     
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
@@ -99,14 +105,14 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
                     ctx.fillStyle = getStrokeColor();
                     ctx.fillText(text, e.offsetX, e.offsetY);
                 }
-               existingShapes= addText(startX,startY,getStrokeColor(),getFontSize(),text,canvas.height,canvas.width,existingShapes).shapeArray;
+               shapeArrayRef.current= addText(startX,startY,getStrokeColor(),getFontSize(),text,canvas.height,canvas.width,shapeArrayRef.current).shapeArray;
             });
         }
         if (getSelectedTool() == "drag") {
             canvas.style.cursor="grabbing";
             
 
-            shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
+            shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, shapeArrayRef.current);
             if (shapeToDrag) {
                 // Calculate offset based on shape type
                 if (shapeToDrag.type === "rectangle"||shapeToDrag.type==='text') {
@@ -132,8 +138,8 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
             return;
         }
         if(isEraserSelected()){
-            eraseShape(shapesToRemove,existingShapes);
-            clearCanvas(ctx,canvas,existingShapes);
+            shapeArrayRef.current=eraseShape(shapesToRemove,shapeArrayRef.current);
+            clearCanvas(ctx,canvas,shapeArrayRef.current,zoom);
             return;
         }
         if(getSelectedTool()==="drag"){
@@ -145,8 +151,9 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
         let height = e.offsetY - startY;
         const newShape: Shapes = createShape(getSelectedTool(),e.offsetX,e.offsetY,height,width,displayText);
         const { type, ...properties } = newShape;
-        existingShapes.push(newShape);
-        clearCanvas(ctx,canvas,existingShapes);
+        shapeArrayRef.current.push(newShape);
+        shapeArrayRef.current.push(newShape);
+        clearCanvas(ctx,canvas,shapeArrayRef.current,zoom);
         pencilStrokeArray=[];
         ctx.closePath()
     });
@@ -168,7 +175,7 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
             let width = xCord - startX;
     
             if(currentTool != "pencil"){
-                clearCanvas(ctx, canvas, existingShapes);
+                clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
             }
     
             // Re-apply styles after clearCanvas
@@ -196,20 +203,27 @@ export async function demoInitDraw(canvas: HTMLCanvasElement) {
                     yPercent: toPercentage(yCord, canvas.height),
                 });
             }else if (isEraserSelected()) {
-                selectShapesToerase(xCord, yCord, ctx, existingShapes, canvas.height, canvas.width, shapesToRemove);
+                selectShapesToerase(xCord, yCord, ctx, shapeArrayRef.current, canvas.height, canvas.width, shapesToRemove);
             }else if (getSelectedTool() == "drag" && shapeToDrag != null) {
-                existingShapes = dragShape(xCord, yCord, canvas.height, canvas.width,dragOffsetX,dragOffsetY, shapeToDrag, existingShapes);
-                clearCanvas(ctx, canvas, existingShapes);
+                shapeArrayRef.current = dragShape(xCord, yCord, canvas.height, canvas.width,dragOffsetX,dragOffsetY, shapeToDrag, shapeArrayRef.current);
+                clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
             }
         }
     });
 }
 
-function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[]) {
+function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[],zoom:number) {
+    const scale = zoom / 100;
+    const newViewportX = (canvas.width / 2) * (1 - scale);
+    const newViewportY = (canvas.height / 2) * (1 - scale);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawShapes(ctx, canvas, shapesArray);
+    redrawShapes(ctx, canvas, shapesArray,zoom,newViewportX,newViewportY);
 }
 
 function eraseShape(shapesToBeRemoved: number[], existingShapes: Shapes[]) {
-    existingShapes.splice(0, existingShapes.length, ...existingShapes.filter(shape => !shapesToBeRemoved.includes(shape.id)));
+    const toRemoveSet = new Set(shapesToBeRemoved);  
+    const filteredShapes = existingShapes.filter(shape => !toRemoveSet.has(shape.id));  
+    existingShapes.length = 0;  
+    existingShapes.push(...filteredShapes); 
+    return existingShapes; 
 }

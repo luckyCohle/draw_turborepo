@@ -8,7 +8,7 @@ import { addTextInput, addText } from "@/utility/textDisplay";
 
 
 
-export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket, selectedToolRef: React.MutableRefObject<string>) {
+export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket, selectedToolRef: React.MutableRefObject<string>,shapeArrayRef:React.MutableRefObject<Shapes[]>,zoom:number) {
     const ctx = canvas.getContext("2d");
     if (!ctx) {
         return;
@@ -52,28 +52,28 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                 id: messageData.id,
                 ...shapeProperties
             };
-            existingShapes.push(newShape);
-            clearCanvas(ctx, canvas, existingShapes);
+            shapeArrayRef.current.push(newShape);
+            clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
         } else if (messageData.type == "deleteShapes") {
             const shapesToBeRemoved = messageData.shapesToRemove;
             shapesToBeRemoved.forEach((x: number) => {
                 shapesToRemove.push(x);
             })
-            eraseShape(shapesToRemove, existingShapes);
-            clearCanvas(ctx, canvas, existingShapes);
+            eraseShape(shapesToRemove, shapeArrayRef.current);
+            clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
 
         } else if (messageData.type == "moveShape") {
             // const shapeProperties = JSON.parse(messageData.shapeProperties);
-            const findShapeIndex = existingShapes.findIndex(x => x.id == messageData.id);
+            const findShapeIndex = shapeArrayRef.current.findIndex(x => x.id == messageData.id);
             console.log(findShapeIndex)
-            existingShapes.splice(findShapeIndex, 1);
+            shapeArrayRef.current.splice(findShapeIndex, 1);
             const newShape: Shapes = {
                 type: messageData.shapeType,
                 id: messageData.id,
                 ...messageData.shapeProperties
             };
-            existingShapes.push(newShape);
-            clearCanvas(ctx, canvas, existingShapes);
+            shapeArrayRef.current.push(newShape);
+            clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
         }
     }
 
@@ -81,13 +81,11 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
         if (ctx) {
-            clearCanvas(ctx, canvas, existingShapes);
-            redrawShapes(ctx, canvas, existingShapes);
+            clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
+            redrawShapes(ctx, canvas, shapeArrayRef.current,zoom,newViewportX,newViewportY);
         }
     }
 
-    let existingShapes: Shapes[] = await getExistingShapes(roomId);
-    console.log(existingShapes)
     let shapesToRemove: number[] = [];
     let shapeToDrag: Shapes | null = null;
     let pencilStrokeArray: lineArrayType[] = [];
@@ -101,6 +99,9 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
     let dragOffsetY = 0;
     const startAngle = 0;
     const endAngle = 2 * Math.PI;
+    const scale = zoom / 100;
+    const newViewportX = (canvas.width / 2) * (1 - scale);
+    const newViewportY = (canvas.height / 2) * (1 - scale);
 
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
@@ -140,13 +141,13 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                     ctx.fillStyle = getStrokeColor();
                     ctx.fillText(text, e.offsetX, e.offsetY);
                 }
-               let result= addText(startX,startY,getStrokeColor(),getFontSize(),text,canvas.height,canvas.width,existingShapes);
-               existingShapes=result.shapeArray;
+               let result= addText(startX,startY,getStrokeColor(),getFontSize(),text,canvas.height,canvas.width,shapeArrayRef.current);
+               shapeArrayRef.current=result.shapeArray;
                sendShape(socket,result.newText,roomId);
             });
         }
         if (getSelectedTool() == "drag") {
-            shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, existingShapes);
+            shapeToDrag = selectShapeNearCurser(e.offsetX, e.offsetY, ctx, canvas.height, canvas.width, shapeArrayRef.current);
             canvas.style.cursor = "grabbing";
             if (shapeToDrag) {
                 // Calculate offset based on shape type
@@ -183,8 +184,8 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                     }));
 
                     // Clear the shapes locally after sending
-                    eraseShape(shapesToRemove, existingShapes);
-                    clearCanvas(ctx, canvas, existingShapes);
+                    eraseShape(shapesToRemove, shapeArrayRef.current);
+                    clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
                     shapesToRemove = []; // Reset the array
                 } else {
                     console.error("WebSocket is not open. Cannot send delete message.");
@@ -218,7 +219,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
         let height = e.offsetY - startY;
         const newShape: Shapes = createShape(getSelectedTool(), e.offsetX, e.offsetY, height, width,inputVal);
         const { type, ...properties } = newShape;
-        existingShapes.push(newShape);
+        shapeArrayRef.current.push(newShape);
         // console.log(existingShapes)
 
 
@@ -243,7 +244,7 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
             let height = yCord - startY;
             let width = xCord - startX;
             if (getSelectedTool() != "pencil") {
-                clearCanvas(ctx, canvas, existingShapes);
+                clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
             }
             // Re-apply styles after clearCanvas
             ctx.strokeStyle = currentStrokeColor;
@@ -269,19 +270,22 @@ export async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket
                     yPercent: toPercentage(yCord, canvas.height),
                 });
             } else if (isEraserSelected()) {
-                selectShapesToerase(xCord, yCord, ctx, existingShapes, canvas.height, canvas.width, shapesToRemove);
+                selectShapesToerase(xCord, yCord, ctx, shapeArrayRef.current, canvas.height, canvas.width, shapesToRemove);
             } else if (getSelectedTool() == "drag" && shapeToDrag != null) {
-                existingShapes = dragShape(xCord, yCord, canvas.height, canvas.width, dragOffsetX, dragOffsetY, shapeToDrag, existingShapes);
-                clearCanvas(ctx, canvas, existingShapes);
+                shapeArrayRef.current = dragShape(xCord, yCord, canvas.height, canvas.width, dragOffsetX, dragOffsetY, shapeToDrag, shapeArrayRef.current);
+                clearCanvas(ctx, canvas, shapeArrayRef.current,zoom);
             }
         }
     });
 }
 
-function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[]) {
+function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[],zoom:number) {
+    const scale = zoom / 100;
+    const newViewportX = (canvas.width / 2) * (1 - scale);
+    const newViewportY = (canvas.height / 2) * (1 - scale);
     ctx.strokeStyle = "white";
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawShapes(ctx, canvas, shapesArray);
+    redrawShapes(ctx, canvas, shapesArray,zoom,newViewportX,newViewportY);
 }
 
 

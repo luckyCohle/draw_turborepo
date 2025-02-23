@@ -3,15 +3,29 @@ import { generateId, getRadius, toAbsolute, toPercentage } from "./canvasCalc";
 import { checkShape } from "./checkShape";
 import { strokeColorType, strokeWidthType, Tool } from "@/redux/toolbarSlice";
 
- export const  redrawShapes=(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, shapesArray: Shapes[])=> {
+export const redrawShapes = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+    shapesArray: Shapes[],
+    zoom: number,
+    viewPortX: number,
+    viewPortY: number
+) => {
+    ctx.save(); // Save initial state once
+    
+    // Apply viewport transformations
+    ctx.translate(viewPortX, viewPortY);
+    ctx.scale(zoom / 100, zoom / 100);
+
     shapesArray.forEach((shape) => {
         // Set stroke styles before starting any path
         ctx.strokeStyle = shape.strokeColour;
-       if (shape.type != "text") {
-        ctx.lineWidth = shape.strokeWidth;
-       }
+        if (shape.type !== "text") {
+            ctx.lineWidth = shape.strokeWidth;
+        }
+
         if (shape.type === "rectangle") {
-            const x:number = toAbsolute(shape.xPercent, canvas.width);
+            const x = toAbsolute(shape.xPercent, canvas.width);
             const y = toAbsolute(shape.yPercent, canvas.height);
             const width = toAbsolute(shape.widthPercent, canvas.width);
             const height = toAbsolute(shape.heightPercent, canvas.height);
@@ -44,15 +58,18 @@ import { strokeColorType, strokeWidthType, Tool } from "@/redux/toolbarSlice";
                 }
             });
             ctx.stroke();
-        }else if (shape.type === "text") {
+        } else if (shape.type === "text") {
             const x = toAbsolute(shape.xPercent, canvas.width);
             const y = toAbsolute(shape.yPercent, canvas.height);
             ctx.font = `${shape.fontSize}px serif`;
             ctx.fillStyle = shape.strokeColour;
-            ctx.fillText(shape.text, x,y)
+            ctx.fillText(shape.text, x, y);
         }
     });
-}
+
+    ctx.restore(); // Restore only once at the end
+};
+
 
 export const  dragShape=(xCord: number, yCord: number, canvasHeight: number, canvasWidth: number, dragOffsetX: number, dragOffsetY: number, shape: Shapes, existingShapes: Shapes[]): Shapes[]=> {
     // Remove the shape being dragged from the array
