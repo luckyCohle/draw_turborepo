@@ -1,84 +1,33 @@
-# Turborepo starter
+🚀 Built My Own Excalidraw Clone! 🎨✨
 
-This is an official starter Turborepo.
+Super excited to share something I’ve been working on—a real-time collaborative drawing app built from scratch using HTML5 Canvas, Next.js, Express, and WebSockets!
 
-## Using this example
+Basically, you can draw on your screen, and whatever you sketch instantly appears on your friends' screens. No fancy libraries for rendering—just raw Canvas and some WebSocket magic! 🔥
 
-Run the following command:
+🛠️ What I Built:
+✅ Real-time collaboration – Draw together, no delays.
+✅ Pure HTML5 Canvas – No external libraries, just raw drawing power.
+✅ Turbo Repo for a clean monorepo setup – Organizing frontend, backend, and WebSockets.
+✅ Next.js & Express – Fast and efficient.
+✅ WebSockets for live updates – Low latency, super smooth.
 
-```sh
-npx create-turbo@latest
-```
+🎯 How It Works:
+1️⃣ Open the app and start drawing.
+2️⃣ Share a session link with friends.
+3️⃣ Watch the magic happen in real-time! ✨
 
-## What's inside?
+This project taught me a lot about real-time syncing, WebSockets, and managing a monorepo efficiently. Looking forward to adding more features! 🚀
 
-This Turborepo includes the following packages/apps:
+Would love your thoughts—check it out here:
+🔗 GitHub: github.com/luckyCohle/draw_turborepo
 
-### Apps and Packages
+Let’s connect! Always happy to chat about web dev, real-time apps, and fun side projects. 😃
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+#WebDevelopment #NextJS #TurboRepo #Canvas #RealTimeCollaboration #WebSockets #SideProject
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 
-### Utilities
 
-This Turborepo has some additional tools already setup for you:
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
 
-### Build
 
-To build all apps and packages, run the following command:
 
-```
-cd my-turborepo
-pnpm build
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm dev
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
