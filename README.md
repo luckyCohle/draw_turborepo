@@ -1,33 +1,66 @@
-🚀 Built My Own Excalidraw Clone! 🎨✨
+# Excalidraw Clone
 
-Super excited to share something I’ve been working on—a real-time collaborative drawing app built from scratch using HTML5 Canvas, Next.js, Express, and WebSockets!
+A real-time collaborative drawing application built with raw HTML5 Canvas. Draw shapes on your screen and see them appear instantly on your friends' screens!
 
-Basically, you can draw on your screen, and whatever you sketch instantly appears on your friends' screens. No fancy libraries for rendering—just raw Canvas and some WebSocket magic! 🔥
+## Features
+- **Live Collaboration**: Draw on your canvas, and your friends will see it in real-time.
+- **Raw HTML5 Canvas**: No external libraries for rendering—everything is built from scratch.
+- **Turbo Repo Monorepo Setup**: Efficiently organized with separate workspaces for frontend, backend, and WebSocket server.
+- **Next.js Frontend**: A modern React-based frontend powered by Next.js.
+- **Express HTTP Backend**: Handles API requests and authentication.
+- **WebSocket Server**: Enables real-time drawing synchronization using `ws`.
 
-🛠️ What I Built:
-✅ Real-time collaboration – Draw together, no delays.
-✅ Pure HTML5 Canvas – No external libraries, just raw drawing power.
-✅ Turbo Repo for a clean monorepo setup – Organizing frontend, backend, and WebSockets.
-✅ Next.js & Express – Fast and efficient.
-✅ WebSockets for live updates – Low latency, super smooth.
+## Tech Stack
+- **Frontend**: Next.js (React framework)
+- **Backend**: Express.js (HTTP server)
+- **WebSockets**: `ws` (WebSocket server for real-time communication)
+- **Monorepo**: Turbo Repo for efficient project structuring
 
-🎯 How It Works:
-1️⃣ Open the app and start drawing.
-2️⃣ Share a session link with friends.
-3️⃣ Watch the magic happen in real-time! ✨
+## Getting Started
 
-This project taught me a lot about real-time syncing, WebSockets, and managing a monorepo efficiently. Looking forward to adding more features! 🚀
+### Prerequisites
+Ensure you have the following installed:
+- Node.js (>= 18.x)
+- npm or yarn
 
-Would love your thoughts—check it out here:
-🔗 GitHub: github.com/luckyCohle/draw_turborepo
+### Installation
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/luckyCohle/draw_turborepo.git
+   cd draw_turborepo
+   ```
+2. Install dependencies:
+   ```sh
+   npm install  # or yarn install
+   ```
+3. Start the development servers:
+   ```sh
+   npm run dev  # Starts frontend, backend, and WebSocket server
+   ```
 
-Let’s connect! Always happy to chat about web dev, real-time apps, and fun side projects. 😃
+### Project Structure
+```
+/draw_turborepo
+├── apps
+│   ├── frontend (Next.js app)
+│   ├── backend (Express HTTP server)
+│   ├── websocket (WebSocket server)
+├── packages
+│   ├── shared (Reusable utilities)
+│   ├── config (Project-wide configurations)
+```
 
-#WebDevelopment #NextJS #TurboRepo #Canvas #RealTimeCollaboration #WebSockets #SideProject
+## Usage
+1. Open the frontend in your browser (`http://localhost:3000`).
+2. Start drawing using your mouse.
+3. Share the session link with your friends to collaborate in real time!
 
+## Contributing
+Contributions are welcome! Feel free to submit issues or pull requests.
 
+## License
+MIT License
 
-
-
-
+## Repository
+[GitHub Repository](https://github.com/luckyCohle/draw_turborepo)
 
