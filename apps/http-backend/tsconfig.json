@@ -10,6 +10,7 @@
       "strict": true,
       "declaration": true,
       "declarationMap": true,
+      "skipLibCheck": true,
       "lib": ["es2022", "DOM", "DOM.Iterable"],
        "noEmit":false,
        "emitDeclarationOnly": false,
