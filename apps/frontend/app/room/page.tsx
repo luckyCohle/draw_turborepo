@@ -56,11 +56,23 @@ const RoomPage = () => {
         { headers: { Authorization: `Bearer ${accessToken}` } }
       )
       .then((response) => {
-        console.log("control at 1");
-        const roomId = response.data.roomId;
-        setRoomToJoin(roomId);
-        console.log("room to join changed to =>" + roomToJoin);
-        handleRoomJoin();
+        const newRoom:Room = {
+          id:response.data.roomId,
+          roomName:newRoomName,
+          adminId:response.data.adminId,
+          adminName:response.data.adminName
+        }
+        console.log(rooms)
+        // Create a new array with the updated rooms
+  const updatedRooms = [...rooms, newRoom];
+  
+  // Set the state with the new array
+  setRooms(updatedRooms);
+  console.log("after push =>");
+  console.log(updatedRooms);
+  setIsCreatingRoom(false);
+  setNewRoomName("");
+        toast.success("room added successfully")
       })
       .catch((error) => {
         setIsCreatingRoom(false);
@@ -101,10 +113,11 @@ const RoomPage = () => {
   return (
     <>
     <Navbar/>
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 flex justify-evenly items-center">
+   <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4 pt-20 flex flex-col md:flex-row justify-center items-center space-y-6 md:space-y-0 md:space-x-6">
+
       
       <ToastContainer position="top-right"/>
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="max-w-md w-full  bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white text-center">
           <h2 className="text-xl font-bold">Rooms</h2>
           <p className="text-blue-100 text-sm mt-1">Join a room</p>

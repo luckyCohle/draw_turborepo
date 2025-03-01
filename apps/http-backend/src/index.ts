@@ -39,6 +39,7 @@ app.post("/signup", async (req, res) => {
                 name: parsedData.data.username
             }
         })
+        console.log(newUser)
         const jwtToken = jwt.sign({
             userId:newUser?.id
         },JWT_SECRET);
@@ -48,8 +49,10 @@ app.post("/signup", async (req, res) => {
             isSuccess:true
         })
     } catch(e) {
+        console.log(e)
         res.status(411).json({
             message: "User already exists with this username",
+            error:e,
             isSuccess:false
         })
     }
@@ -128,6 +131,8 @@ app.post("/room",auth, async (req, res) => {
             })
             return
         }
+        const adminId = checkUser.id;
+        const adminName = checkUser.name;
         const roomSlug = parsedData.data.name
         const checkSlug = await prismaClient.room.findUnique({
             where:{
@@ -148,7 +153,9 @@ app.post("/room",auth, async (req, res) => {
         })
         res.json({
             message:"room Created",
-            roomId: newRoom.id
+            roomId: newRoom.id,
+            adminId,
+            adminName
         })
     } catch (error) {
         console.log(error)
